@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Raisin Finance - Plataforma de Educação Financeira e Rastreamento de Despesas">
+    <title>Raisin Finance - Seu Guia Pessoal de Finanças</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-logo">
+                <h1>🌾 Raisin Finance</h1>
+            </div>
+            <button class="hamburger" id="hamburger" aria-label="Alternar menu de navegação">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <ul class="nav-menu" id="navMenu">
+                <li><a href="#home" class="nav-link" data-section="home">Início</a></li>
+                <li><a href="#content-hub" class="nav-link" data-section="content-hub">Centro de Conteúdo</a></li>
+                <li><a href="#education" class="nav-link" data-section="education">Aprendizado</a></li>
+                <li><a href="#expense-tracker" class="nav-link" data-section="expense-tracker">Rastreador de Despesas</a></li>
+                <li><a href="#progress" class="nav-link" data-section="progress">Meu Progresso</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main>
+        <!-- Home Section -->
+        <section id="home" class="section active">
+            <div class="container">
+                <div class="hero">
+                    <h1>Bem-vindo ao Raisin Finance</h1>
+                    <p>Domine seu dinheiro, cresça sua riqueza, construa seu futuro</p>
+                    <button class="btn btn-primary" onclick="navigateSection('content-hub')">Comece a Aprender</button>
+                </div>
+
+                <div class="quick-stats">
+                    <div class="stat-card">
+                        <div class="stat-icon">📚</div>
+                        <h3>15+</h3>
+                        <p>Cursos Disponíveis</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💰</div>
+                        <h3 id="total-expenses-home">R$0,00</h3>
+                        <p>Total de Despesas Rastreadas</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📈</div>
+                        <h3 id="total-saved-home">R$0,00</h3>
+                        <p>Economizado com Orçamento</p>
+                    </div>
+                </div>
+
+                <div class="featured-courses">
+                    <h2>Cursos em Destaque</h2>
+                    <div class="course-preview">
+                        <div class="preview-card">
+                            <div class="preview-icon">🏠</div>
+                            <h3>Noções de Orçamento</h3>
+                            <p>Aprenda a criar e manter um orçamento</p>
+                            <button class="btn btn-secondary" onclick="navigateSection('education')">Explorar</button>
+                        </div>
+                        <div class="preview-card">
+                            <div class="preview-icon">💡</div>
+                            <h3>Investimento 101</h3>
+                            <p>Comece sua jornada de investimento</p>
+                            <button class="btn btn-secondary" onclick="navigateSection('education')">Explorar</button>
+                        </div>
+                        <div class="preview-card">
+                            <div class="preview-icon">🎯</div>
+                            <h3>Definição de Metas</h3>
+                            <p>Crie e alcance seus objetivos financeiros</p>
+                            <button class="btn btn-secondary" onclick="navigateSection('education')">Explorar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Content Hub Section -->
+        <section id="content-hub" class="section">
+            <div class="container">
+                <h1>Centro de Conteúdo</h1>
+                <p class="section-subtitle">Acesse todos os nossos materiais e recursos de aprendizado</p>
+
+                <div class="content-filter">
+                    <button class="filter-btn active" data-filter="all">Todos</button>
+                    <button class="filter-btn" data-filter="courses">Cursos</button>
+                    <button class="filter-btn" data-filter="videos">Vídeos</button>
+                    <button class="filter-btn" data-filter="articles">Artigos</button>
+                </div>
+
+                <div class="content-grid" id="contentGrid">
+                    <!-- Content cards will be generated here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Education Section -->
+        <section id="education" class="section">
+            <div class="container">
+                <h1>Educação Financeira</h1>
+                <p class="section-subtitle">Aprenda no seu próprio ritmo com nossos cursos abrangentes</p>
+
+                <div class="courses-list" id="coursesList">
+                    <!-- Courses will be generated here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Expense Tracker Section -->
+        <section id="expense-tracker" class="section">
+            <div class="container">
+                <h1>Rastreador de Despesas</h1>
+                <p class="section-subtitle">Acompanhe seus gastos e gerencie seu orçamento</p>
+
+                <!-- Add Expense Form -->
+                <div class="expense-form-container">
+                    <h2>Adicionar Nova Despesa</h2>
+                    <form id="expenseForm" class="expense-form">
+                        <div class="form-group">
+                            <label for="expenseDate">Data</label>
+                            <input type="date" id="expenseDate" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="expenseCategory">Categoria</label>
+                            <select id="expenseCategory" required>
+                                <option value="">Selecione uma categoria</option>
+                                <option value="food">Alimentação</option>
+                                <option value="transportation">Transporte</option>
+                                <option value="entertainment">Entretenimento</option>
+                                <option value="housing">Habitação</option>
+                                <option value="education">Educação</option>
+                                <option value="healthcare">Saúde</option>
+                                <option value="utilities">Utilidades</option>
+                                <option value="shopping">Compras</option>
+                                <option value="savings">Poupança</option>
+                                <option value="other">Outro</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="expenseDescription">Descrição</label>
+                            <input type="text" id="expenseDescription" placeholder="ex: Compras no mercado" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="expenseAmount">Valor (R$)</label>
+                            <input type="number" id="expenseAmount" step="0.01" placeholder="0,00" required>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Adicionar Despesa</button>
+                    </form>
+                </div>
+
+                <!-- Expense Summary -->
+                <div class="expense-summary">
+                    <h2>Resumo do Mês</h2>
+                    <div class="summary-stats">
+                        <div class="summary-card">
+                            <h3>Total de Despesas</h3>
+                            <p class="summary-amount" id="monthlyTotal">R$0,00</p>
+                        </div>
+                        <div class="summary-card">
+                            <h3>Categoria Maior</h3>
+                            <p class="summary-category" id="highestCategory">—</p>
+                        </div>
+                    </div>
+
+                    <!-- Category Breakdown -->
+                    <div class="category-breakdown">
+                        <h3>Gastos por Categoria</h3>
+                        <div class="breakdown-chart" id="breakdownChart">
+                            <!-- Chart will be generated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Expenses List -->
+                <div class="expenses-history">
+                    <h2>Despesas Recentes</h2>
+                    <div class="expenses-list" id="expensesList">
+                        <!-- Expenses will be listed here -->
+                    </div>
+                    <button class="btn btn-secondary" id="clearAllBtn">Limpar Todas as Despesas</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- User Progress Section -->
+        <section id="progress" class="section">
+            <div class="container">
+                <h1>Meu Progresso</h1>
+                <p class="section-subtitle">Acompanhe sua jornada de aprendizado e realizações</p>
+
+                <!-- Progress Overview -->
+                <div class="progress-overview">
+                    <div class="progress-card">
+                        <h3>Cursos Concluídos</h3>
+                        <p class="progress-number" id="completedCourses">0</p>
+                    </div>
+                    <div class="progress-card">
+                        <h3>Total de Horas de Aprendizado</h3>
+                        <p class="progress-number" id="totalHours">0</p>
+                    </div>
+                    <div class="progress-card">
+                        <h3>Certificados Ganhos</h3>
+                        <p class="progress-number" id="certificatesEarned">0</p>
+                    </div>
+                </div>
+
+                <!-- Course Progress -->
+                <div class="course-progress">
+                    <h2>Progresso do Curso</h2>
+                    <div class="progress-items" id="progressItems">
+                        <!-- Progress items will be generated here -->
+                    </div>
+                </div>
+
+                <!-- Certificates -->
+                <div class="certificates-section">
+                    <h2>Certificados</h2>
+                    <div class="certificates-list" id="certificatesList">
+                        <!-- Certificates will be listed here -->
+                    </div>
+                </div>
+
+                <!-- Savings Achievement -->
+                <div class="savings-achievement">
+                    <h2>Realizações de Poupança</h2>
+                    <div class="achievement-card">
+                        <p class="achievement-label">Total Economizado com Orçamento</p>
+                        <p class="achievement-amount" id="totalSavingsAmount">R$0,00</p>
+                        <div class="savings-progress-bar">
+                            <div class="savings-progress-fill" id="savingsProgressFill"></div>
+                        </div>
+                        <p class="achievement-goal">Meta: R$1.000,00</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 Raisin Finance. Domine seu dinheiro, cresça sua riqueza.</p>
+            <p class="footer-note">Os dados são salvos localmente no seu dispositivo.</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
