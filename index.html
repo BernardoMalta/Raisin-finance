@@ -1,262 +1,311 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Raisin Finance - Plataforma de Educação Financeira e Rastreamento de Despesas">
-    <title>Raisin Finance - Seu Guia Pessoal de Finanças</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Raisin Finance — Sua jornada financeira</title>
+<meta name="description" content="Aprenda a cuidar do seu dinheiro: cursos, rastreamento de despesas e progresso, tudo em um só lugar.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./style.css">
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="navbar-container">
-            <div class="navbar-logo">
-                <h1>💜​ Raisin Finance</h1>
-            </div>
-            <button class="hamburger" id="hamburger" aria-label="Alternar menu de navegação">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
-            <ul class="nav-menu" id="navMenu">
-                <li><a href="#home" class="nav-link" data-section="home">Início</a></li>
-                <li><a href="#content-hub" class="nav-link" data-section="content-hub">Centro de Conteúdo</a></li>
-                <li><a href="#education" class="nav-link" data-section="education">Aprendizado</a></li>
-                <li><a href="#expense-tracker" class="nav-link" data-section="expense-tracker">Rastreador de Despesas</a></li>
-                <li><a href="#progress" class="nav-link" data-section="progress">Meu Progresso</a></li>
-            </ul>
-        </div>
+
+<!-- ===== TOP APP BAR ===== -->
+<header class="app-bar">
+  <div class="app-bar__inner">
+    <div class="brand">
+      <span class="brand__mark" aria-hidden="true">
+        <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+          <circle cx="13" cy="13" r="12" stroke="currentColor" stroke-width="2"/>
+          <path d="M8 15L11 10L14.5 13.5L18 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <span class="brand__name">Raisin<span class="brand__accent">Finance</span></span>
+    </div>
+
+    <button class="icon-btn app-bar__menu-btn" id="menuToggle" aria-label="Abrir menu" aria-expanded="false" aria-controls="desktopNav">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M3 6H19M3 11H19M3 16H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+
+    <!-- Desktop / tablet horizontal nav -->
+    <nav class="app-nav" id="desktopNav" aria-label="Navegação principal">
+      <button class="app-nav__link is-active" data-tab="home">Início</button>
+      <button class="app-nav__link" data-tab="learn">Aprender</button>
+      <button class="app-nav__link" data-tab="track">Despesas</button>
+      <button class="app-nav__link" data-tab="progress">Progresso</button>
     </nav>
+  </div>
+</header>
 
-    <!-- Main Content -->
-    <main>
-        <!-- Home Section -->
-        <section id="home" class="section active">
-            <div class="container">
-                <div class="hero">
-                    <h1>Bem-vindo ao Raisin Finance</h1>
-                    <p>Domine seu dinheiro, cresça sua riqueza, construa seu futuro</p>
-                    <button class="btn btn-primary" onclick="navigateSection('content-hub')">Comece a Aprender</button>
-                </div>
+<!-- ===== MAIN CONTENT ===== -->
+<main id="mainContent">
 
-                <div class="quick-stats">
-                    <div class="stat-card">
-                        <div class="stat-icon">📚</div>
-                        <h3>15+</h3>
-                        <p>Cursos Disponíveis</p>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">💰</div>
-                        <h3 id="total-expenses-home">R$0,00</h3>
-                        <p>Total de Despesas Rastreadas</p>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">📈</div>
-                        <h3 id="total-saved-home">R$0,00</h3>
-                        <p>Economizado com Orçamento</p>
-                    </div>
-                </div>
+  <!-- ---------- HOME / DASHBOARD ---------- -->
+  <section class="view" id="view-home" data-view="home">
+    <div class="hero">
+      <p class="hero__eyebrow">Painel geral</p>
+      <h1 class="hero__title" id="greeting">Boa tarde, vamos organizar seu dinheiro.</h1>
+      <p class="hero__subtitle">Um resumo rápido de onde você está agora.</p>
 
-                <div class="featured-courses">
-                    <h2>Cursos em Destaque</h2>
-                    <div class="course-preview">
-                        <div class="preview-card">
-                            <div class="preview-icon">🏠</div>
-                            <h3>Noções de Orçamento</h3>
-                            <p>Aprenda a criar e manter um orçamento</p>
-                            <button class="btn btn-secondary" onclick="navigateSection('education')">Explorar</button>
-                        </div>
-                        <div class="preview-card">
-                            <div class="preview-icon">💡</div>
-                            <h3>Investimento 101</h3>
-                            <p>Comece sua jornada de investimento</p>
-                            <button class="btn btn-secondary" onclick="navigateSection('education')">Explorar</button>
-                        </div>
-                        <div class="preview-card">
-                            <div class="preview-icon">🎯</div>
-                            <h3>Definição de Metas</h3>
-                            <p>Crie e alcance seus objetivos financeiros</p>
-                            <button class="btn btn-secondary" onclick="navigateSection('education')">Explorar</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
+      <div class="hero__chart" aria-hidden="true">
+        <svg viewBox="0 0 320 96" width="100%" height="96" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="growthFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#8FD8C4" stop-opacity="0.55"/>
+              <stop offset="100%" stop-color="#8FD8C4" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <path id="growthArea" d="M0,80 L40,74 L80,66 L120,68 L160,50 L200,52 L240,34 L280,30 L320,14 L320,96 L0,96 Z" fill="url(#growthFill)"/>
+          <path id="growthLine" d="M0,80 L40,74 L80,66 L120,68 L160,50 L200,52 L240,34 L280,30 L320,14" fill="none" stroke="#8FD8C4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="hero__chart-label">Saldo disponível · últimos 8 registros</span>
+      </div>
+    </div>
 
-        <!-- Content Hub Section -->
-        <section id="content-hub" class="section">
-            <div class="container">
-                <h1>Centro de Conteúdo</h1>
-                <p class="section-subtitle">Acesse todos os nossos materiais e recursos de aprendizado</p>
+    <div class="stat-grid">
+      <div class="stat-card">
+        <p class="stat-card__label">Gasto este mês</p>
+        <p class="stat-card__value ledger" id="statSpent">R$ 0,00</p>
+        <p class="stat-card__foot" id="statSpentFoot">Nenhum lançamento ainda</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-card__label">Meta de economia</p>
+        <p class="stat-card__value ledger" id="statSavings">R$ 0,00</p>
+        <div class="mini-bar"><div class="mini-bar__fill" id="statSavingsBar" style="width:0%"></div></div>
+      </div>
+      <div class="stat-card">
+        <p class="stat-card__label">Cursos em andamento</p>
+        <p class="stat-card__value ledger" id="statCourses">0 / 5</p>
+        <p class="stat-card__foot">Continue de onde parou</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-card__label">Certificados</p>
+        <p class="stat-card__value ledger" id="statCerts">0</p>
+        <p class="stat-card__foot">Conquistados até agora</p>
+      </div>
+    </div>
 
-                <div class="content-filter">
-                    <button class="filter-btn active" data-filter="all">Todos</button>
-                    <button class="filter-btn" data-filter="courses">Cursos</button>
-                    <button class="filter-btn" data-filter="videos">Vídeos</button>
-                    <button class="filter-btn" data-filter="articles">Artigos</button>
-                </div>
+    <div class="section-block">
+      <div class="section-block__head">
+        <h2>Acesso rápido</h2>
+      </div>
+      <div class="quick-grid">
+        <button class="quick-card" data-goto="learn">
+          <span class="quick-card__icon" aria-hidden="true">📚</span>
+          <span class="quick-card__title">Central de conteúdo</span>
+          <span class="quick-card__desc">Cursos, artigos e vídeos</span>
+        </button>
+        <button class="quick-card" data-goto="track">
+          <span class="quick-card__icon" aria-hidden="true">🧾</span>
+          <span class="quick-card__title">Lançar despesa</span>
+          <span class="quick-card__desc">Registre um novo gasto</span>
+        </button>
+        <button class="quick-card" data-goto="progress">
+          <span class="quick-card__icon" aria-hidden="true">🏅</span>
+          <span class="quick-card__title">Meu progresso</span>
+          <span class="quick-card__desc">Certificados e conquistas</span>
+        </button>
+      </div>
+    </div>
 
-                <div class="content-grid" id="contentGrid">
-                    <!-- Content cards will be generated here -->
-                </div>
-            </div>
-        </section>
+    <div class="section-block">
+      <div class="section-block__head">
+        <h2>Continue aprendendo</h2>
+        <button class="text-link" data-goto="learn">Ver tudo</button>
+      </div>
+      <div class="scroll-row" id="homeCourseRow"></div>
+    </div>
+  </section>
 
-        <!-- Education Section -->
-        <section id="education" class="section">
-            <div class="container">
-                <h1>Educação Financeira</h1>
-                <p class="section-subtitle">Aprenda no seu próprio ritmo com nossos cursos abrangentes</p>
+  <!-- ---------- LEARN / CONTENT HUB ---------- -->
+  <section class="view" id="view-learn" data-view="learn" hidden>
+    <div class="page-head">
+      <p class="page-head__eyebrow">Central de conteúdo</p>
+      <h1 class="page-head__title">Aprender</h1>
+      <p class="page-head__subtitle">Trilhas curtas para você aplicar hoje mesmo.</p>
+    </div>
 
-                <div class="courses-list" id="coursesList">
-                    <!-- Courses will be generated here -->
-                </div>
-            </div>
-        </section>
+    <div class="filter-row" id="courseFilters" role="tablist" aria-label="Filtrar por categoria">
+      <button class="chip is-active" data-filter="all">Tudo</button>
+      <button class="chip" data-filter="fundamentos">Fundamentos</button>
+      <button class="chip" data-filter="orcamento">Orçamento</button>
+      <button class="chip" data-filter="reserva">Reserva</button>
+      <button class="chip" data-filter="investimentos">Investimentos</button>
+      <button class="chip" data-filter="metas">Metas</button>
+    </div>
 
-        <!-- Expense Tracker Section -->
-        <section id="expense-tracker" class="section">
-            <div class="container">
-                <h1>Rastreador de Despesas</h1>
-                <p class="section-subtitle">Acompanhe seus gastos e gerencie seu orçamento</p>
+    <div class="course-list" id="courseList"></div>
+  </section>
 
-                <!-- Add Expense Form -->
-                <div class="expense-form-container">
-                    <h2>Adicionar Nova Despesa</h2>
-                    <form id="expenseForm" class="expense-form">
-                        <div class="form-group">
-                            <label for="expenseDate">Data</label>
-                            <input type="date" id="expenseDate" required>
-                        </div>
+  <!-- ---------- COURSE DETAIL (lesson view) ---------- -->
+  <section class="view" id="view-course" data-view="course" hidden>
+    <button class="back-btn" id="courseBackBtn">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M11 3L5 9L11 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Voltar
+    </button>
 
-                        <div class="form-group">
-                            <label for="expenseCategory">Categoria</label>
-                            <select id="expenseCategory" required>
-                                <option value="">Selecione uma categoria</option>
-                                <option value="food">Alimentação</option>
-                                <option value="transportation">Transporte</option>
-                                <option value="entertainment">Entretenimento</option>
-                                <option value="housing">Habitação</option>
-                                <option value="education">Educação</option>
-                                <option value="healthcare">Saúde</option>
-                                <option value="utilities">Utilidades</option>
-                                <option value="shopping">Compras</option>
-                                <option value="savings">Poupança</option>
-                                <option value="other">Outro</option>
-                            </select>
-                        </div>
+    <div class="course-detail" id="courseDetail">
+      <!-- populated by JS -->
+    </div>
+  </section>
 
-                        <div class="form-group">
-                            <label for="expenseDescription">Descrição</label>
-                            <input type="text" id="expenseDescription" placeholder="ex: Compras no mercado" required>
-                        </div>
+  <!-- ---------- EXPENSE TRACKER ---------- -->
+  <section class="view" id="view-track" data-view="track" hidden>
+    <div class="page-head">
+      <p class="page-head__eyebrow">Ferramenta financeira</p>
+      <h1 class="page-head__title">Despesas</h1>
+      <p class="page-head__subtitle">Registre um gasto e acompanhe seu orçamento em tempo real.</p>
+    </div>
 
-                        <div class="form-group">
-                            <label for="expenseAmount">Valor (R$)</label>
-                            <input type="number" id="expenseAmount" step="0.01" placeholder="0,00" required>
-                        </div>
+    <form class="expense-form" id="expenseForm" novalidate>
+      <div class="field">
+        <label for="expDesc">Descrição</label>
+        <input type="text" id="expDesc" name="description" placeholder="Ex.: Almoço com a equipe" maxlength="60" required autocomplete="off">
+        <span class="field__error" id="expDescError" role="alert"></span>
+      </div>
 
-                        <button type="submit" class="btn btn-primary">Adicionar Despesa</button>
-                    </form>
-                </div>
-
-                <!-- Expense Summary -->
-                <div class="expense-summary">
-                    <h2>Resumo do Mês</h2>
-                    <div class="summary-stats">
-                        <div class="summary-card">
-                            <h3>Total de Despesas</h3>
-                            <p class="summary-amount" id="monthlyTotal">R$0,00</p>
-                        </div>
-                        <div class="summary-card">
-                            <h3>Categoria Maior</h3>
-                            <p class="summary-category" id="highestCategory">—</p>
-                        </div>
-                    </div>
-
-                    <!-- Category Breakdown -->
-                    <div class="category-breakdown">
-                        <h3>Gastos por Categoria</h3>
-                        <div class="breakdown-chart" id="breakdownChart">
-                            <!-- Chart will be generated here -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Expenses List -->
-                <div class="expenses-history">
-                    <h2>Despesas Recentes</h2>
-                    <div class="expenses-list" id="expensesList">
-                        <!-- Expenses will be listed here -->
-                    </div>
-                    <button class="btn btn-secondary" id="clearAllBtn">Limpar Todas as Despesas</button>
-                </div>
-            </div>
-        </section>
-
-        <!-- User Progress Section -->
-        <section id="progress" class="section">
-            <div class="container">
-                <h1>Meu Progresso</h1>
-                <p class="section-subtitle">Acompanhe sua jornada de aprendizado e realizações</p>
-
-                <!-- Progress Overview -->
-                <div class="progress-overview">
-                    <div class="progress-card">
-                        <h3>Cursos Concluídos</h3>
-                        <p class="progress-number" id="completedCourses">0</p>
-                    </div>
-                    <div class="progress-card">
-                        <h3>Total de Horas de Aprendizado</h3>
-                        <p class="progress-number" id="totalHours">0</p>
-                    </div>
-                    <div class="progress-card">
-                        <h3>Certificados Ganhos</h3>
-                        <p class="progress-number" id="certificatesEarned">0</p>
-                    </div>
-                </div>
-
-                <!-- Course Progress -->
-                <div class="course-progress">
-                    <h2>Progresso do Curso</h2>
-                    <div class="progress-items" id="progressItems">
-                        <!-- Progress items will be generated here -->
-                    </div>
-                </div>
-
-                <!-- Certificates -->
-                <div class="certificates-section">
-                    <h2>Certificados</h2>
-                    <div class="certificates-list" id="certificatesList">
-                        <!-- Certificates will be listed here -->
-                    </div>
-                </div>
-
-                <!-- Savings Achievement -->
-                <div class="savings-achievement">
-                    <h2>Realizações de Poupança</h2>
-                    <div class="achievement-card">
-                        <p class="achievement-label">Total Economizado com Orçamento</p>
-                        <p class="achievement-amount" id="totalSavingsAmount">R$0,00</p>
-                        <div class="savings-progress-bar">
-                            <div class="savings-progress-fill" id="savingsProgressFill"></div>
-                        </div>
-                        <p class="achievement-goal">Meta: R$1.000,00</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <p>&copy; 2024 Raisin Finance. Domine seu dinheiro, cresça sua riqueza.</p>
-            <p class="footer-note">Os dados são salvos localmente no seu dispositivo.</p>
+      <div class="field-row">
+        <div class="field">
+          <label for="expAmount">Valor (R$)</label>
+          <input type="number" id="expAmount" name="amount" inputmode="decimal" placeholder="0,00" min="0.01" step="0.01" required>
+          <span class="field__error" id="expAmountError" role="alert"></span>
         </div>
-    </footer>
+        <div class="field">
+          <label for="expDate">Data</label>
+          <input type="date" id="expDate" name="date" required>
+          <span class="field__error" id="expDateError" role="alert"></span>
+        </div>
+      </div>
 
-    <script src="script.js"></script>
+      <div class="field">
+        <label id="categoryLabel">Categoria</label>
+        <div class="category-picker" id="categoryPicker" role="radiogroup" aria-labelledby="categoryLabel"></div>
+        <span class="field__error" id="expCategoryError" role="alert"></span>
+      </div>
+
+      <button type="submit" class="btn btn--primary btn--block" id="expenseSubmitBtn">
+        <span class="btn__label">Registrar despesa</span>
+        <span class="btn__spinner" aria-hidden="true"></span>
+      </button>
+    </form>
+
+    <div class="budget-summary section-block">
+      <div class="section-block__head">
+        <h2>Visão geral do orçamento</h2>
+        <span class="ledger budget-total" id="budgetTotal">R$ 0,00</span>
+      </div>
+      <p class="budget-summary__hint">Defina um limite mensal para acompanhar seu ritmo de gastos.</p>
+      <div class="field budget-goal-field">
+        <label for="budgetGoalInput">Limite mensal (R$)</label>
+        <div class="budget-goal-row">
+          <input type="number" id="budgetGoalInput" min="0" step="10" placeholder="Ex.: 2000">
+          <button class="btn btn--ghost" id="budgetGoalSave">Salvar</button>
+        </div>
+      </div>
+      <div class="budget-bars" id="budgetBars"></div>
+    </div>
+
+    <div class="section-block">
+      <div class="section-block__head">
+        <h2>Lançamentos recentes</h2>
+      </div>
+      <ul class="tx-list" id="txList" aria-live="polite"></ul>
+      <p class="empty-state" id="txEmptyState">Nenhuma despesa registrada ainda. Use o formulário acima para começar.</p>
+    </div>
+  </section>
+
+  <!-- ---------- PROGRESS / CERTIFICATION ---------- -->
+  <section class="view" id="view-progress" data-view="progress" hidden>
+    <div class="page-head">
+      <p class="page-head__eyebrow">Sua trajetória</p>
+      <h1 class="page-head__title">Progresso</h1>
+      <p class="page-head__subtitle">O que você já conquistou até aqui.</p>
+    </div>
+
+    <div class="progress-overview">
+      <div class="ring-card">
+        <svg class="ring" viewBox="0 0 120 120" width="120" height="120">
+          <circle cx="60" cy="60" r="52" fill="none" stroke="#DCE4EE" stroke-width="10"/>
+          <circle id="ringProgress" cx="60" cy="60" r="52" fill="none" stroke="#0B2545" stroke-width="10" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="326.7" transform="rotate(-90 60 60)"/>
+        </svg>
+        <div class="ring-card__center">
+          <span class="ledger ring-card__num" id="ringLabel">0%</span>
+          <span class="ring-card__caption">concluído</span>
+        </div>
+      </div>
+      <div class="progress-overview__stats">
+        <div class="mini-stat">
+          <span class="ledger mini-stat__num" id="progCoursesDone">0</span>
+          <span class="mini-stat__label">cursos concluídos</span>
+        </div>
+        <div class="mini-stat">
+          <span class="ledger mini-stat__num" id="progSaved">R$ 0,00</span>
+          <span class="mini-stat__label">economizado este mês</span>
+        </div>
+        <div class="mini-stat">
+          <span class="ledger mini-stat__num" id="progCerts">0</span>
+          <span class="mini-stat__label">certificados</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block">
+      <div class="section-block__head"><h2>Certificados</h2></div>
+      <div class="cert-list" id="certList"></div>
+      <p class="empty-state" id="certEmptyState">Conclua um curso na aba Aprender para desbloquear seu primeiro certificado.</p>
+    </div>
+
+    <div class="section-block">
+      <div class="section-block__head"><h2>Todos os cursos</h2></div>
+      <div class="progress-course-list" id="progressCourseList"></div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ===== MOBILE BOTTOM NAVIGATION ===== -->
+<nav class="bottom-nav" aria-label="Navegação principal mobile">
+  <button class="bottom-nav__item is-active" data-tab="home">
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M3 10L11 3L19 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 9V18H17V9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span>Início</span>
+  </button>
+  <button class="bottom-nav__item" data-tab="learn">
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M3 5.5C3 4.7 3.7 4 4.5 4H10V18H4.5C3.7 18 3 17.3 3 16.5V5.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M19 5.5C19 4.7 18.3 4 17.5 4H12V18H17.5C18.3 18 19 17.3 19 16.5V5.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+    <span>Aprender</span>
+  </button>
+  <button class="bottom-nav__item" data-tab="track">
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="4" y="3" width="14" height="16" rx="1.5" stroke="currentColor" stroke-width="2"/><path d="M7.5 8H14.5M7.5 11.5H14.5M7.5 15H11.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    <span>Despesas</span>
+  </button>
+  <button class="bottom-nav__item" data-tab="progress">
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="8" r="5" stroke="currentColor" stroke-width="2"/><path d="M7.5 12.5L6 19L11 16.5L16 19L14.5 12.5" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+    <span>Progresso</span>
+  </button>
+</nav>
+
+<!-- ===== TOAST NOTIFICATIONS ===== -->
+<div class="toast-stack" id="toastStack" aria-live="assertive" aria-atomic="true"></div>
+
+<!-- ===== CERTIFICATE MODAL ===== -->
+<div class="modal-overlay" id="certModalOverlay" hidden>
+  <div class="modal cert-modal" role="dialog" aria-modal="true" aria-labelledby="certModalTitle">
+    <button class="modal__close" id="certModalClose" aria-label="Fechar">✕</button>
+    <div class="certificate" id="certificateArt">
+      <p class="certificate__eyebrow">Raisin Finance</p>
+      <h2 class="certificate__title" id="certModalTitle">Certificado de Conclusão</h2>
+      <p class="certificate__body">Este certificado é concedido a</p>
+      <p class="certificate__name" id="certUserName">Você</p>
+      <p class="certificate__body">por concluir com êxito o curso</p>
+      <p class="certificate__course" id="certCourseName">—</p>
+      <p class="certificate__date" id="certDate">—</p>
+      <div class="certificate__seal" aria-hidden="true">✓</div>
+    </div>
+    <button class="btn btn--primary btn--block" id="certPrintBtn">Baixar / Imprimir certificado</button>
+  </div>
+</div>
+
+<script src="script.js"></script>
 </body>
 </html>
