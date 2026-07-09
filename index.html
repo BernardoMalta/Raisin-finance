@@ -12,6 +12,62 @@
 </head>
 <body>
 
+<!-- ===== AUTH SCREEN (login / cadastro) ===== -->
+<div class="auth-screen" id="authScreen">
+  <div class="auth-card">
+    <div class="brand auth-card__brand">
+      <span class="brand__mark" aria-hidden="true">
+        <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+          <circle cx="13" cy="13" r="12" stroke="currentColor" stroke-width="2"/>
+          <path d="M8 15L11 10L14.5 13.5L18 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <span class="brand__name">Raisin<span class="brand__accent">Finance</span></span>
+    </div>
+
+    <h1 class="auth-card__title" id="authTitle">Entrar ou criar conta</h1>
+    <p class="auth-card__subtitle" id="authSubtitle">Informe seu e-mail para continuar.</p>
+
+    <form class="auth-form" id="authEmailForm" novalidate>
+      <div class="field">
+        <label for="authEmail">E-mail</label>
+        <input type="email" id="authEmail" required autocomplete="email" placeholder="voce@email.com">
+        <span class="field__error" id="authEmailError" role="alert"></span>
+      </div>
+      <button type="submit" class="btn btn--primary btn--block" id="authEmailBtn">
+        <span class="btn__label">Continuar</span>
+        <span class="btn__spinner" aria-hidden="true"></span>
+      </button>
+    </form>
+
+    <form class="auth-form" id="authDetailsForm" novalidate hidden>
+      <button type="button" class="text-link auth-form__back" id="authBackBtn">← usar outro e-mail</button>
+      <div class="field" id="authNameField" hidden>
+        <label for="authName">Nome</label>
+        <input type="text" id="authName" autocomplete="name" placeholder="Seu nome">
+        <span class="field__error" id="authNameError" role="alert"></span>
+      </div>
+      <div class="field">
+        <label for="authPassword">Senha</label>
+        <input type="password" id="authPassword" autocomplete="current-password" placeholder="••••••••">
+        <span class="field__error" id="authPasswordError" role="alert"></span>
+      </div>
+      <div class="field" id="authConfirmField" hidden>
+        <label for="authConfirmPassword">Confirmar senha</label>
+        <input type="password" id="authConfirmPassword" autocomplete="new-password" placeholder="••••••••">
+        <span class="field__error" id="authConfirmPasswordError" role="alert"></span>
+      </div>
+      <button type="submit" class="btn btn--primary btn--block" id="authSubmitBtn">
+        <span class="btn__label">Entrar</span>
+        <span class="btn__spinner" aria-hidden="true"></span>
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== APP SHELL (hidden until authenticated) ===== -->
+<div id="appShell" hidden>
+
 <!-- ===== TOP APP BAR ===== -->
 <header class="app-bar">
   <div class="app-bar__inner">
@@ -25,8 +81,11 @@
       <span class="brand__name">Raisin<span class="brand__accent">Finance</span></span>
     </div>
 
-    <button class="icon-btn app-bar__menu-btn" id="menuToggle" aria-label="Abrir menu" aria-expanded="false" aria-controls="desktopNav">
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M3 6H19M3 11H19M3 16H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    <button class="icon-btn app-bar__profile-btn" id="profileToggle" aria-label="Abrir perfil" aria-expanded="false" aria-controls="profileModalOverlay" hidden>
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+        <circle cx="11" cy="7.5" r="3.5" stroke="currentColor" stroke-width="2"/>
+        <path d="M4 18C4.8 14.8 7.6 13 11 13C14.4 13 17.2 14.8 18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
     </button>
 
     <!-- Desktop / tablet horizontal nav -->
@@ -93,17 +152,23 @@
       </div>
       <div class="quick-grid">
         <button class="quick-card" data-goto="learn">
-          <span class="quick-card__icon" aria-hidden="true">📚</span>
+          <span class="quick-card__icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5C3 4.4 3.4 4 4 4H9V16H4C3.4 16 3 15.6 3 15V5Z"/><path d="M17 5C17 4.4 16.6 4 16 4H11V16H16C16.6 16 17 15.6 17 15V5Z"/></svg>
+          </span>
           <span class="quick-card__title">Central de conteúdo</span>
           <span class="quick-card__desc">Cursos, artigos e vídeos</span>
         </button>
         <button class="quick-card" data-goto="track">
-          <span class="quick-card__icon" aria-hidden="true">🧾</span>
+          <span class="quick-card__icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3H15V18L13 16.5L11 18L9 16.5L7 18L5 16.5V3Z"/><path d="M7.5 7H12.5M7.5 10H12.5M7.5 13H10.5"/></svg>
+          </span>
           <span class="quick-card__title">Lançar despesa</span>
           <span class="quick-card__desc">Registre um novo gasto</span>
         </button>
         <button class="quick-card" data-goto="progress">
-          <span class="quick-card__icon" aria-hidden="true">🏅</span>
+          <span class="quick-card__icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="7" r="4.5"/><path d="M7 11L5.5 18L10 15.5L14.5 18L13 11"/></svg>
+          </span>
           <span class="quick-card__title">Meu progresso</span>
           <span class="quick-card__desc">Certificados e conquistas</span>
         </button>
@@ -285,14 +350,22 @@
   </button>
 </nav>
 
+</div>
+<!-- ===== /APP SHELL ===== -->
+
 <!-- ===== TOAST NOTIFICATIONS ===== -->
 <div class="toast-stack" id="toastStack" aria-live="assertive" aria-atomic="true"></div>
 
 <!-- ===== CERTIFICATE MODAL ===== -->
 <div class="modal-overlay" id="certModalOverlay" hidden>
   <div class="modal cert-modal" role="dialog" aria-modal="true" aria-labelledby="certModalTitle">
-    <button class="modal__close" id="certModalClose" aria-label="Fechar">✕</button>
+    <button class="modal__close" id="certModalClose" aria-label="Fechar">
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5L15 15M15 5L5 15"/></svg>
+    </button>
     <div class="certificate" id="certificateArt">
+      <div class="certificate__seal" aria-hidden="true">
+        <svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="7" r="4.5"/><path d="M7 11L5.5 18L10 15.5L14.5 18L13 11"/></svg>
+      </div>
       <p class="certificate__eyebrow">Raisin Finance</p>
       <h2 class="certificate__title" id="certModalTitle">Certificado de Conclusão</h2>
       <p class="certificate__body">Este certificado é concedido a</p>
@@ -300,9 +373,40 @@
       <p class="certificate__body">por concluir com êxito o curso</p>
       <p class="certificate__course" id="certCourseName">—</p>
       <p class="certificate__date" id="certDate">—</p>
-      <div class="certificate__seal" aria-hidden="true">✓</div>
     </div>
     <button class="btn btn--primary btn--block" id="certPrintBtn">Baixar / Imprimir certificado</button>
+  </div>
+</div>
+
+<!-- ===== PROFILE MODAL ===== -->
+<div class="modal-overlay" id="profileModalOverlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="profileModalTitle">
+    <button class="modal__close" id="profileModalClose" aria-label="Fechar">
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5L15 15M15 5L5 15"/></svg>
+    </button>
+    <h2 class="course-detail__title" id="profileModalTitle" style="font-size:19px;margin-top:0;">Meu perfil</h2>
+    <form class="expense-form modal-form--plain" id="profileForm" novalidate>
+      <div class="field">
+        <label for="profileName">Nome</label>
+        <input type="text" id="profileName" required autocomplete="name">
+        <span class="field__error" id="profileNameError" role="alert"></span>
+      </div>
+      <div class="field">
+        <label for="profileEmail">E-mail</label>
+        <input type="email" id="profileEmail" required autocomplete="email">
+        <span class="field__error" id="profileEmailError" role="alert"></span>
+      </div>
+      <div class="field">
+        <label for="profileNewPassword">Nova senha (opcional)</label>
+        <input type="password" id="profileNewPassword" autocomplete="new-password" placeholder="Deixe em branco para manter a atual">
+        <span class="field__error" id="profileNewPasswordError" role="alert"></span>
+      </div>
+      <button type="submit" class="btn btn--primary btn--block" id="profileSaveBtn">
+        <span class="btn__label">Salvar alterações</span>
+        <span class="btn__spinner" aria-hidden="true"></span>
+      </button>
+      <button type="button" class="btn btn--ghost btn--block" id="logoutBtn">Sair da conta</button>
+    </form>
   </div>
 </div>
 

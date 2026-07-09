@@ -1,13 +1,15 @@
 /* ==========================================================================
    RAISIN FINANCE — script.js
-   Navigation, course content, expense tracker, and progress/certification.
+   Auth (per-user accounts), navigation, course content + video-gated
+   certification, expense tracker, and progress.
 
-   DATA PERSISTENCE NOTE:
-   This build keeps all data in memory (the `AppState` object below) for the
-   current session only. When you deploy this outside of the Claude preview
-   sandbox, browser storage works normally — swap the load()/save() functions
-   at the bottom of this file for the commented-out localStorage versions to
-   persist data between visits.
+   PERSISTENCE NOTE:
+   Accounts are stored in localStorage under 'raisin-finance-users' (name,
+   email, salted SHA-256 password hash). Each user's app data is stored
+   separately under 'raisin-finance-state-<email>' so every account keeps
+   its own expenses, budget, course/video progress and last screen. This is
+   a client-side-only demo: there is no server, so "secure auth" here means
+   "reasonable for a static site", not production-grade credential storage.
    ========================================================================== */
 
 (function () {
@@ -28,7 +30,7 @@
     {
       id: 'c1',
       category: 'fundamentos',
-      icon: '📘',
+      icon: 'book',
       title: 'Fundamentos de finanças pessoais',
       desc: 'Entenda como renda, gastos e patrimônio se conectam antes de partir para estratégias mais avançadas.',
       videoId: 'HQzoZfc3GwQ',
@@ -42,7 +44,7 @@
     {
       id: 'c2',
       category: 'orcamento',
-      icon: '📊',
+      icon: 'barChart',
       title: 'Noções básicas de orçamento',
       desc: 'Aprenda o método 50/30/20 e como montar um orçamento mensal que você realmente vai seguir.',
       videoId: 'sVKQn2I4HDM',
@@ -56,7 +58,7 @@
     {
       id: 'c3',
       category: 'reserva',
-      icon: '🛟',
+      icon: 'shieldCheck',
       title: 'Construindo um fundo de emergência',
       desc: 'Passo a passo para juntar de 3 a 6 meses de despesas essenciais com segurança e consistência.',
       videoId: 'Nj0MZ6eSJd4',
@@ -69,7 +71,7 @@
     {
       id: 'c4',
       category: 'investimentos',
-      icon: '📈',
+      icon: 'trendingUp',
       title: 'Introdução a investimentos',
       desc: 'Os conceitos essenciais — risco, liquidez e diversificação — antes do seu primeiro aporte.',
       videoId: 'gFQNPmLKj1k',
@@ -83,7 +85,7 @@
     {
       id: 'c5',
       category: 'metas',
-      icon: '🎯',
+      icon: 'target',
       title: 'Estrutura de definição de metas',
       desc: 'Transforme sonhos financeiros em metas SMART com prazos e valores realistas.',
       videoId: 'L4N1q4RNi9I',
@@ -96,64 +98,95 @@
   ];
 
   const EXPENSE_CATEGORIES = [
-    { id: 'alimentacao', label: 'Alimentação', icon: '🍽️' },
-    { id: 'transporte', label: 'Transporte', icon: '🚌' },
-    { id: 'moradia', label: 'Moradia', icon: '🏠' },
-    { id: 'entretenimento', label: 'Entretenimento', icon: '🎬' },
-    { id: 'educacao', label: 'Educação', icon: '📚' },
-    { id: 'poupanca', label: 'Poupança', icon: '💰' },
-    { id: 'saude', label: 'Saúde', icon: '💊' },
-    { id: 'outros', label: 'Outros', icon: '🧩' }
+    { id: 'alimentacao', label: 'Alimentação', icon: 'plate' },
+    { id: 'transporte', label: 'Transporte', icon: 'bus' },
+    { id: 'moradia', label: 'Moradia', icon: 'home' },
+    { id: 'entretenimento', label: 'Entretenimento', icon: 'film' },
+    { id: 'educacao', label: 'Educação', icon: 'book' },
+    { id: 'poupanca', label: 'Poupança', icon: 'coins' },
+    { id: 'saude', label: 'Saúde', icon: 'heart' },
+    { id: 'outros', label: 'Outros', icon: 'grid' }
   ];
 
   /* ------------------------------------------------------------------ *
-   * 2. STATE (in-memory for this preview — see note at top of file)
+   * 2. STATE (per-user, loaded after login)
    * ------------------------------------------------------------------ */
-  const AppState = {
-    userName: 'Você',
-    expenses: [],          // { id, description, amount, category, date }
-    budgetGoal: 2000,
-    savingsGoal: 500,
-    courseProgress: {}     // { [courseId]: { doneLessons: Set-like array, completed, completedDate } }
-  };
+  let AppState = null; // set on login; shape from defaultState()
 
-  function load() {
-    // In-memory only in this environment. To persist across sessions in a
-    // real deployment, replace this with:
-    //
-    // try {
-    //   const raw = localStorage.getItem('raisin-finance-state');
-    //   if (raw) Object.assign(AppState, JSON.parse(raw));
-    // } catch (e) { console.warn('Could not load saved data', e); }
-    seedDemoData();
+  const USERS_KEY = 'raisin-finance-users';
+  const SESSION_KEY = 'raisin-finance-session';
+  const STATE_PREFIX = 'raisin-finance-state-';
+
+  function readJSON(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (e) {
+      console.warn('Could not read', key, e);
+      return fallback;
+    }
   }
 
-  function save() {
-    // In-memory only in this environment. To persist across sessions in a
-    // real deployment, replace this with:
-    //
-    // try {
-    //   localStorage.setItem('raisin-finance-state', JSON.stringify(AppState));
-    // } catch (e) { console.warn('Could not save data', e); }
+  function writeJSON(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (e) {
+      console.warn('Could not write', key, e);
+    }
   }
 
-  function seedDemoData() {
-    const today = new Date();
-    const iso = (d) => d.toISOString().slice(0, 10);
-    AppState.expenses = [
-      { id: 'e1', description: 'Supermercado da semana', amount: 186.4, category: 'alimentacao', date: iso(new Date(today.getFullYear(), today.getMonth(), 3)) },
-      { id: 'e2', description: 'Passagem de ônibus', amount: 24.0, category: 'transporte', date: iso(new Date(today.getFullYear(), today.getMonth(), 4)) },
-      { id: 'e3', description: 'Aluguel', amount: 950.0, category: 'moradia', date: iso(new Date(today.getFullYear(), today.getMonth(), 5)) },
-      { id: 'e4', description: 'Cinema com amigos', amount: 58.5, category: 'entretenimento', date: iso(new Date(today.getFullYear(), today.getMonth(), 6)) }
-    ];
-    AppState.courseProgress = {
-      c1: { doneLessons: ['0', '1', '2', '3'], completed: true, completedDate: iso(today) },
-      c2: { doneLessons: ['0', '1'], completed: false }
+  function getUsers() { return readJSON(USERS_KEY, {}); }
+  function saveUsers(users) { writeJSON(USERS_KEY, users); }
+
+  function getSessionEmail() { return localStorage.getItem(SESSION_KEY) || null; }
+  function setSessionEmail(email) {
+    if (email) localStorage.setItem(SESSION_KEY, email);
+    else localStorage.removeItem(SESSION_KEY);
+  }
+
+  function defaultState(name, email) {
+    return {
+      userName: name,
+      email: email,
+      expenses: [],
+      budgetGoal: 2000,
+      savingsGoal: 500,
+      courseProgress: {},   // { [courseId]: { completed, completedDate, video: { time, duration, watched } } }
+      lastView: 'home',
+      activeCourseId: null
     };
   }
 
+  function loadStateForUser(email) { return readJSON(STATE_PREFIX + email, null); }
+  function saveStateForUser(email, state) { writeJSON(STATE_PREFIX + email, state); }
+
+  function save() {
+    if (!AppState || !AppState.email) return;
+    saveStateForUser(AppState.email, AppState);
+  }
+
   /* ------------------------------------------------------------------ *
-   * 3. UTILITIES
+   * 3. PASSWORD HASHING (best-effort client-side, no backend available)
+   * ------------------------------------------------------------------ */
+  async function hashPassword(password, salt) {
+    const str = salt + ':' + password;
+    if (window.crypto && window.crypto.subtle) {
+      const data = new TextEncoder().encode(str);
+      const digest = await window.crypto.subtle.digest('SHA-256', data);
+      return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+    }
+    // Fallback for contexts without SubtleCrypto (e.g. non-secure origins).
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+    }
+    return String(hash);
+  }
+
+  function randomSalt() { return uid('s'); }
+
+  /* ------------------------------------------------------------------ *
+   * 4. UTILITIES
    * ------------------------------------------------------------------ */
   const $ = (sel, ctx) => (ctx || document).querySelector(sel);
   const $$ = (sel, ctx) => Array.from((ctx || document).querySelectorAll(sel));
@@ -176,10 +209,20 @@
     });
   }
 
+  function ensureVideoProgress(progress) {
+    if (!progress.video) progress.video = { time: 0, duration: 0, watched: false };
+    return progress;
+  }
+
   function courseProgressPct(course) {
     const p = AppState.courseProgress[course.id];
     if (!p) return 0;
-    return Math.round((p.doneLessons.length / course.lessons.length) * 100);
+    if (p.completed) return 100;
+    const v = p.video;
+    if (v && v.duration > 0) {
+      return Math.min(100, Math.round((v.time / v.duration) * 100));
+    }
+    return 0;
   }
 
   function uid(prefix) {
@@ -187,14 +230,44 @@
   }
 
   /* ------------------------------------------------------------------ *
-   * 4. TOASTS
+   * 4b. ICONS (inline SVG set — no emoji anywhere in the UI)
+   * ------------------------------------------------------------------ */
+  const ICON_PATHS = {
+    book: '<path d="M3 5C3 4.4 3.4 4 4 4H9V16H4C3.4 16 3 15.6 3 15V5Z"/><path d="M17 5C17 4.4 16.6 4 16 4H11V16H16C16.6 16 17 15.6 17 15V5Z"/>',
+    barChart: '<path d="M4 17V11M10 17V5M16 17V9"/>',
+    shieldCheck: '<path d="M10 2L16 4.5V9C16 13 13.5 16.2 10 18C6.5 16.2 4 13 4 9V4.5L10 2Z"/><path d="M7.3 9.6L9 11.3L12.7 7.4"/>',
+    trendingUp: '<path d="M3 14L8 9L11.5 12.5L17 6"/><path d="M12.5 6H17V10.5"/>',
+    target: '<circle cx="10" cy="10" r="7"/><circle cx="10" cy="10" r="3.5"/><circle cx="10" cy="10" r="0.7" fill="currentColor" stroke="none"/>',
+    plate: '<circle cx="10" cy="10" r="7"/><circle cx="10" cy="10" r="3"/>',
+    bus: '<rect x="3" y="4" width="14" height="10" rx="2"/><path d="M3 10H17"/><circle cx="6.5" cy="16" r="1.1" fill="currentColor" stroke="none"/><circle cx="13.5" cy="16" r="1.1" fill="currentColor" stroke="none"/>',
+    home: '<path d="M3 9L10 3L17 9"/><path d="M5 8V16H15V8"/>',
+    film: '<rect x="3" y="6" width="14" height="10" rx="1.5"/><path d="M3 6.5L6 3.5H9L7 6.5"/><path d="M10 6.5L12 3.5H15L13 6.5"/>',
+    coins: '<ellipse cx="10" cy="6" rx="6" ry="2.2"/><path d="M4 6V10C4 11.2 6.7 12.2 10 12.2C13.3 12.2 16 11.2 16 10V6"/><path d="M4 10V14C4 15.2 6.7 16.2 10 16.2C13.3 16.2 16 15.2 16 14V10"/>',
+    heart: '<path d="M10 17C10 17 3 12.5 3 7.8C3 5.2 5 3.5 7.2 3.5C8.5 3.5 9.5 4.2 10 5C10.5 4.2 11.5 3.5 12.8 3.5C15 3.5 17 5.2 17 7.8C17 12.5 10 17 10 17Z"/>',
+    grid: '<rect x="3" y="3" width="6" height="6" rx="1"/><rect x="11" y="3" width="6" height="6" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/>',
+    receipt: '<path d="M5 3H15V18L13 16.5L11 18L9 16.5L7 18L5 16.5V3Z"/><path d="M7.5 7H12.5M7.5 10H12.5M7.5 13H10.5"/>',
+    award: '<circle cx="10" cy="7" r="4.5"/><path d="M7 11L5.5 18L10 15.5L14.5 18L13 11"/>',
+    checkCircle: '<circle cx="10" cy="10" r="8"/><path d="M6.5 10.2L8.7 12.4L13.5 7.5"/>',
+    alertCircle: '<circle cx="10" cy="10" r="8"/><path d="M10 6V10.5"/><circle cx="10" cy="13.5" r="0.9" fill="currentColor" stroke="none"/>',
+    infoCircle: '<circle cx="10" cy="10" r="8"/><path d="M10 9V14"/><circle cx="10" cy="6.3" r="0.9" fill="currentColor" stroke="none"/>',
+    close: '<path d="M5 5L15 15M15 5L5 15"/>',
+    check: '<path d="M4.5 10.2L8 13.5L15.5 5.5"/>'
+  };
+
+  function icon(name, size) {
+    size = size || 20;
+    return `<svg width="${size}" height="${size}" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON_PATHS[name] || ''}</svg>`;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 5. TOASTS
    * ------------------------------------------------------------------ */
   function showToast(message, type) {
     const stack = $('#toastStack');
     const el = document.createElement('div');
     el.className = 'toast toast--' + (type || 'default');
-    const icon = type === 'success' ? '✓' : type === 'error' ? '!' : '•';
-    el.innerHTML = `<span class="toast__icon">${icon}</span><span>${message}</span>`;
+    const iconName = type === 'success' ? 'checkCircle' : type === 'error' ? 'alertCircle' : 'infoCircle';
+    el.innerHTML = `<span class="toast__icon">${icon(iconName, 16)}</span><span>${message}</span>`;
     stack.appendChild(el);
     setTimeout(() => {
       el.classList.add('is-leaving');
@@ -203,10 +276,150 @@
   }
 
   /* ------------------------------------------------------------------ *
-   * 5. NAVIGATION
+   * 6. AUTH (login / cadastro / sessão)
    * ------------------------------------------------------------------ */
-  let activeCourseId = null;
+  let authMode = 'login';
+  let authEmailChecked = null;
 
+  function initAuth() {
+    $('#authEmailForm').addEventListener('submit', onAuthEmailSubmit);
+    $('#authDetailsForm').addEventListener('submit', onAuthDetailsSubmit);
+    $('#authBackBtn').addEventListener('click', resetAuthToEmailStep);
+  }
+
+  function clearAuthErrors() {
+    ['authEmail', 'authName', 'authPassword', 'authConfirmPassword'].forEach(clearFieldError);
+  }
+
+  function onAuthEmailSubmit(evt) {
+    evt.preventDefault();
+    clearAuthErrors();
+    const email = $('#authEmail').value.trim().toLowerCase();
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+      setFieldError('authEmail', 'Informe um e-mail válido.');
+      return;
+    }
+
+    authEmailChecked = email;
+    const exists = !!getUsers()[email];
+    authMode = exists ? 'login' : 'register';
+
+    $('#authEmailForm').hidden = true;
+    $('#authDetailsForm').hidden = false;
+    $('#authNameField').hidden = exists;
+    $('#authConfirmField').hidden = exists;
+    $('#authName').required = !exists;
+    $('#authConfirmPassword').required = !exists;
+    $('#authPassword').setAttribute('autocomplete', exists ? 'current-password' : 'new-password');
+    $('#authTitle').textContent = exists ? 'Bem-vindo de volta' : 'Criar sua conta';
+    $('#authSubtitle').textContent = exists
+      ? `Digite a senha da conta ${email}.`
+      : `Vamos criar sua conta com o e-mail ${email}.`;
+    $('#authSubmitBtn .btn__label').textContent = exists ? 'Entrar' : 'Criar conta';
+    $('#authPassword').value = '';
+    $('#authName').value = '';
+    $('#authConfirmPassword').value = '';
+    $('#authPassword').focus();
+  }
+
+  function resetAuthToEmailStep() {
+    clearAuthErrors();
+    $('#authDetailsForm').hidden = true;
+    $('#authEmailForm').hidden = false;
+    $('#authEmail').focus();
+  }
+
+  async function onAuthDetailsSubmit(evt) {
+    evt.preventDefault();
+    clearAuthErrors();
+    const email = authEmailChecked;
+    const password = $('#authPassword').value;
+    const btn = $('#authSubmitBtn');
+
+    if (!password || password.length < 4) {
+      setFieldError('authPassword', 'A senha deve ter ao menos 4 caracteres.');
+      return;
+    }
+
+    const users = getUsers();
+
+    if (authMode === 'login') {
+      const user = users[email];
+      if (!user) { setFieldError('authPassword', 'Conta não encontrada.'); return; }
+      btn.classList.add('is-loading'); btn.disabled = true;
+      const hash = await hashPassword(password, user.salt);
+      btn.classList.remove('is-loading'); btn.disabled = false;
+      if (hash !== user.passwordHash) {
+        setFieldError('authPassword', 'Senha incorreta.');
+        return;
+      }
+      completeLogin(email, user.name);
+    } else {
+      const name = $('#authName').value.trim();
+      const confirm = $('#authConfirmPassword').value;
+      let valid = true;
+      if (!name) { setFieldError('authName', 'Informe seu nome.'); valid = false; }
+      if (password !== confirm) { setFieldError('authConfirmPassword', 'As senhas não coincidem.'); valid = false; }
+      if (!valid) return;
+
+      btn.classList.add('is-loading'); btn.disabled = true;
+      const salt = randomSalt();
+      const hash = await hashPassword(password, salt);
+      btn.classList.remove('is-loading'); btn.disabled = false;
+
+      users[email] = { name, email, salt, passwordHash: hash, createdAt: new Date().toISOString() };
+      saveUsers(users);
+      saveStateForUser(email, defaultState(name, email));
+      completeLogin(email, name);
+    }
+  }
+
+  function completeLogin(email, name) {
+    setSessionEmail(email);
+    AppState = loadStateForUser(email) || defaultState(name, email);
+    selectedCategory = null;
+    save();
+    showAppShell();
+    restoreSession();
+    showToast(`Bem-vindo, ${name.split(' ')[0]}!`, 'success');
+  }
+
+  function showAuthScreen() {
+    $('#appShell').hidden = true;
+    $('#authScreen').hidden = false;
+    $('#profileToggle').hidden = true;
+    $('#authEmailForm').reset();
+    resetAuthToEmailStep();
+  }
+
+  function showAppShell() {
+    $('#authScreen').hidden = true;
+    $('#appShell').hidden = false;
+    $('#profileToggle').hidden = false;
+  }
+
+  function logout() {
+    setSessionEmail(null);
+    stopVideoTracking();
+    AppState = null;
+    $('#profileModalOverlay').hidden = true;
+    showAuthScreen();
+    showToast('Você saiu da conta.', 'default');
+  }
+
+  function restoreSession() {
+    setGreeting();
+    const targetView = AppState.lastView || 'home';
+    if (targetView === 'course' && AppState.activeCourseId && COURSES.some((c) => c.id === AppState.activeCourseId)) {
+      openCourse(AppState.activeCourseId);
+    } else {
+      goTo(targetView === 'course' ? 'home' : targetView);
+    }
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 7. NAVIGATION
+   * ------------------------------------------------------------------ */
   function goTo(tab) {
     $$('.view').forEach((v) => { v.hidden = true; });
     const target = tab === 'course' ? $('#view-course') : $('#view-' + tab);
@@ -216,6 +429,13 @@
     $$('.app-nav__link').forEach((btn) => btn.classList.toggle('is-active', btn.dataset.tab === tab));
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    if (AppState) {
+      AppState.lastView = tab;
+      if (tab !== 'course') AppState.activeCourseId = null;
+      save();
+    }
+    if (tab !== 'course') stopVideoTracking();
 
     if (tab === 'home') renderHome();
     if (tab === 'learn') renderCourseList();
@@ -231,28 +451,20 @@
       btn.addEventListener('click', () => goTo(btn.dataset.goto));
     });
 
-    const menuToggle = $('#menuToggle');
-    const desktopNav = $('#desktopNav');
-    menuToggle.addEventListener('click', () => {
-      const isOpen = desktopNav.classList.toggle('is-open-mobile');
-      menuToggle.setAttribute('aria-expanded', String(isOpen));
-      // On small screens, fall back to a quick nav-to-first-item affordance.
-      if (isOpen) {
-        showToast('Use a barra inferior para navegar no celular.', 'default');
-      }
-    });
-
     $('#courseBackBtn').addEventListener('click', () => goTo('learn'));
   }
 
   function setGreeting() {
     const hour = new Date().getHours();
     const label = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
-    $('#greeting').textContent = `${label}, vamos organizar seu dinheiro.`;
+    const firstName = AppState && AppState.userName ? AppState.userName.split(' ')[0] : '';
+    $('#greeting').textContent = firstName
+      ? `${label}, ${firstName}! Vamos organizar seu dinheiro.`
+      : `${label}, vamos organizar seu dinheiro.`;
   }
 
   /* ------------------------------------------------------------------ *
-   * 6. HOME / DASHBOARD
+   * 8. HOME / DASHBOARD
    * ------------------------------------------------------------------ */
   function renderHome() {
     const monthExpenses = currentMonthExpenses();
@@ -262,7 +474,6 @@
       ? `${monthExpenses.length} lançamento${monthExpenses.length > 1 ? 's' : ''} este mês`
       : 'Nenhum lançamento ainda';
 
-    const savingsPct = Math.min(100, Math.round((total > 0 ? Math.max(AppState.savingsGoal - 0, 0) : AppState.savingsGoal) / AppState.savingsGoal * 100));
     $('#statSavings').textContent = formatBRL(AppState.savingsGoal);
     $('#statSavingsBar').style.width = '62%';
 
@@ -281,7 +492,7 @@
       card.addEventListener('click', () => openCourse(course.id));
       card.innerHTML = `
         <span class="teaser-card__tag">${CATEGORY_LABELS[course.category]}</span>
-        <span class="teaser-card__title">${course.icon} ${course.title}</span>
+        <span class="teaser-card__title" style="display:flex;align-items:center;gap:6px;color:var(--navy-800);">${icon(course.icon, 16)}${course.title}</span>
         <div class="teaser-card__bar"><div class="teaser-card__bar-fill" style="width:${pct}%"></div></div>
         <span class="teaser-card__pct">${pct}% concluído</span>
       `;
@@ -290,7 +501,7 @@
   }
 
   /* ------------------------------------------------------------------ *
-   * 7. LEARN / CONTENT HUB
+   * 9. LEARN / CONTENT HUB
    * ------------------------------------------------------------------ */
   let activeFilter = 'all';
 
@@ -309,7 +520,7 @@
       card.className = 'course-card';
       card.addEventListener('click', () => openCourse(course.id));
       card.innerHTML = `
-        <span class="course-card__icon" aria-hidden="true">${course.icon}</span>
+        <span class="course-card__icon" aria-hidden="true">${icon(course.icon, 20)}</span>
         <span class="course-card__body">
           <span class="course-card__title">${course.title}</span>
           <span class="course-card__desc">${course.desc}</span>
@@ -341,103 +552,207 @@
   }
 
   /* ------------------------------------------------------------------ *
-   * 8. COURSE DETAIL
+   * 10. COURSE DETAIL + VIDEO COMPLETION TRACKING
    * ------------------------------------------------------------------ */
   function openCourse(courseId) {
-    activeCourseId = courseId;
     const course = COURSES.find((c) => c.id === courseId);
     if (!course) return;
     if (!AppState.courseProgress[courseId]) {
-      AppState.courseProgress[courseId] = { doneLessons: [], completed: false };
+      AppState.courseProgress[courseId] = { completed: false, video: { time: 0, duration: 0, watched: false } };
     }
+    ensureVideoProgress(AppState.courseProgress[courseId]);
+    AppState.activeCourseId = courseId;
+    AppState.lastView = 'course';
+    save();
     renderCourseDetail(course);
     goTo('course');
   }
 
+  function renderCompletionCardHTML(course, progress, pct) {
+    return `
+      <div class="completion-card__head">
+        <span class="completion-card__icon${progress.completed ? ' is-complete' : ''}">${icon(progress.completed ? 'checkCircle' : 'award', 20)}</span>
+        <div>
+          <p class="completion-card__title">${progress.completed ? 'Curso concluído' : 'Conclua o curso'}</p>
+          <p class="completion-card__subtitle">${progress.completed
+            ? `Concluído em ${formatDate(progress.completedDate)}`
+            : 'Assista o vídeo até o final para liberar o certificado'}</p>
+        </div>
+      </div>
+      <div class="completion-card__bar"><div class="completion-card__bar-fill" style="width:${pct}%"></div></div>
+      <p class="completion-card__pct">${pct}% do vídeo assistido</p>
+      <button class="btn btn--primary btn--block" id="completeCourseBtn" ${progress.completed ? '' : 'disabled'}>
+        <span class="btn__label">${progress.completed ? 'Ver certificado' : 'Assista o vídeo completo para concluir'}</span>
+        <span class="btn__spinner" aria-hidden="true"></span>
+      </button>
+    `;
+  }
+
+  function renderLessonOutlineHTML(course, progress) {
+    return course.lessons.map((lesson, idx) => `
+      <div class="lesson-item${progress.completed ? ' is-done' : ''}">
+        <span class="lesson-item__check">${progress.completed ? icon('check', 12) : idx + 1}</span>
+        <span class="lesson-item__title">${lesson.title}</span>
+        <span class="lesson-item__time">${lesson.minutes} min</span>
+      </div>
+    `).join('');
+  }
+
   function renderCourseDetail(course) {
-    const progress = AppState.courseProgress[course.id];
+    const progress = ensureVideoProgress(AppState.courseProgress[course.id]);
     const pct = courseProgressPct(course);
+    const playerId = 'ytplayer-' + course.id;
 
     const detail = $('#courseDetail');
     detail.innerHTML = `
       <div class="course-detail__media">
         <div class="course-detail__video">
-          <iframe src="https://www.youtube.com/embed/${course.videoId}" title="${course.title}" loading="lazy" allowfullscreen></iframe>
+          <div id="${playerId}" style="width:100%;height:100%;"></div>
         </div>
         <h1 class="course-detail__title">${course.title}</h1>
         <p class="course-detail__desc">${course.desc}</p>
-        ${progress.completed ? `<span class="course-card__status course-card__status--done" style="margin-top:12px;">Curso concluído em ${formatDate(progress.completedDate)}</span>` : ''}
       </div>
       <div class="course-detail__side">
-        <div class="course-card__bar" style="margin-top:16px;"><div class="course-card__bar-fill" style="width:${pct}%"></div></div>
-        <p class="stat-card__foot" style="margin-top:6px;">${pct}% concluído · ${progress.doneLessons.length}/${course.lessons.length} aulas</p>
-        <div class="lesson-list" id="lessonList"></div>
-        <button class="btn btn--primary btn--block" id="completeCourseBtn" style="margin-top:16px;">
-          <span class="btn__label">${progress.completed ? 'Ver certificado' : 'Marcar curso como concluído'}</span>
-          <span class="btn__spinner" aria-hidden="true"></span>
-        </button>
+        <div class="completion-card" id="completionCard">${renderCompletionCardHTML(course, progress, pct)}</div>
+        <p class="lesson-outline__label">Conteúdo do curso</p>
+        <div class="lesson-list" id="lessonList">${renderLessonOutlineHTML(course, progress)}</div>
       </div>
     `;
 
-    const lessonList = $('#lessonList');
-    course.lessons.forEach((lesson, idx) => {
-      const isDone = progress.doneLessons.includes(String(idx));
-      const row = document.createElement('button');
-      row.className = 'lesson-item' + (isDone ? ' is-done' : '');
-      row.style.width = '100%';
-      row.style.textAlign = 'left';
-      row.innerHTML = `
-        <span class="lesson-item__check">${isDone ? '✓' : ''}</span>
-        <span class="lesson-item__title">${lesson.title}</span>
-        <span class="lesson-item__time">${lesson.minutes} min</span>
-      `;
-      row.addEventListener('click', () => toggleLesson(course, idx));
-      lessonList.appendChild(row);
+    detail.addEventListener('click', (e) => {
+      if (e.target.closest('#completeCourseBtn') && AppState.courseProgress[course.id].completed) {
+        openCertificate(course);
+      }
     });
 
-    $('#completeCourseBtn').addEventListener('click', () => onCompleteCourse(course));
+    initYouTubePlayer(course, playerId);
   }
 
-  function toggleLesson(course, idx) {
-    const progress = AppState.courseProgress[course.id];
-    const key = String(idx);
-    const pos = progress.doneLessons.indexOf(key);
-    if (pos === -1) {
-      progress.doneLessons.push(key);
-    } else {
-      progress.doneLessons.splice(pos, 1);
-      progress.completed = false;
+  // ---- YouTube IFrame API integration: tracks real watch progress so the
+  // certificate can only unlock once the lesson video has actually played
+  // through to the end (and lets the learner resume where they left off). ----
+  let ytApiPromise = null;
+  function loadYouTubeAPI() {
+    if (ytApiPromise) return ytApiPromise;
+    ytApiPromise = new Promise((resolve) => {
+      if (window.YT && window.YT.Player) { resolve(window.YT); return; }
+      const previous = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = function () {
+        if (typeof previous === 'function') previous();
+        resolve(window.YT);
+      };
+      if (!document.getElementById('youtubeApiScript')) {
+        const tag = document.createElement('script');
+        tag.id = 'youtubeApiScript';
+        tag.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(tag);
+      }
+    });
+    return ytApiPromise;
+  }
+
+  let currentPlayer = null;
+  let currentPlayerCourse = null;
+  let progressIntervalId = null;
+
+  function stopVideoTracking() {
+    if (progressIntervalId) { clearInterval(progressIntervalId); progressIntervalId = null; }
+    if (currentPlayer && typeof currentPlayer.destroy === 'function') {
+      try { currentPlayer.destroy(); } catch (e) { /* iframe may already be gone */ }
     }
+    currentPlayer = null;
+    currentPlayerCourse = null;
+  }
+
+  async function initYouTubePlayer(course, playerId) {
+    stopVideoTracking();
+    const YT = await loadYouTubeAPI();
+    if (!AppState || AppState.activeCourseId !== course.id || !document.getElementById(playerId)) return; // user navigated away before API loaded
+    const progress = ensureVideoProgress(AppState.courseProgress[course.id]);
+
+    currentPlayerCourse = course;
+    currentPlayer = new YT.Player(playerId, {
+      width: '100%',
+      height: '100%',
+      videoId: course.videoId,
+      playerVars: { rel: 0, playsinline: 1 },
+      events: {
+        onReady: (e) => {
+          if (progress.video.time > 2 && !progress.video.watched) {
+            e.target.seekTo(progress.video.time, true);
+          }
+        },
+        onStateChange: (e) => {
+          if (e.data === YT.PlayerState.ENDED) markVideoWatched(course);
+        }
+      }
+    });
+
+    progressIntervalId = setInterval(() => trackVideoProgress(course), 2000);
+  }
+
+  function trackVideoProgress(course) {
+    if (!currentPlayer || currentPlayerCourse !== course || typeof currentPlayer.getCurrentTime !== 'function') return;
+    let time, duration;
+    try {
+      time = currentPlayer.getCurrentTime();
+      duration = currentPlayer.getDuration();
+    } catch (e) { return; }
+    if (!duration) return;
+
+    const progress = ensureVideoProgress(AppState.courseProgress[course.id]);
+    progress.video.time = Math.max(progress.video.time, time);
+    progress.video.duration = duration;
     save();
-    renderCourseDetail(course);
-    showToast('Progresso da aula atualizado.', 'success');
+    updateVideoProgressUI(course);
+
+    if (!progress.video.watched && progress.video.time / duration >= 0.97) {
+      markVideoWatched(course);
+    }
   }
 
-  function onCompleteCourse(course) {
-    const progress = AppState.courseProgress[course.id];
-    if (progress.completed) {
-      openCertificate(course);
-      return;
-    }
-    const btn = $('#completeCourseBtn');
-    btn.classList.add('is-loading');
-    btn.disabled = true;
+  function markVideoWatched(course) {
+    const progress = ensureVideoProgress(AppState.courseProgress[course.id]);
+    if (progress.video.watched) return;
+    progress.video.watched = true;
+    if (progress.video.duration) progress.video.time = progress.video.duration;
+    const wasCompleted = progress.completed;
+    progress.completed = true;
+    progress.completedDate = progress.completedDate || new Date().toISOString().slice(0, 10);
+    save();
 
-    setTimeout(() => {
-      progress.doneLessons = course.lessons.map((_, i) => String(i));
-      progress.completed = true;
-      progress.completedDate = new Date().toISOString().slice(0, 10);
-      save();
-      btn.classList.remove('is-loading');
-      btn.disabled = false;
-      renderCourseDetail(course);
+    if (isCourseDetailShowing(course)) refreshCourseDetailStatus(course);
+
+    if (!wasCompleted) {
       showToast(`Parabéns! Você concluiu "${course.title}".`, 'success');
       openCertificate(course);
-    }, 700);
+    }
+  }
+
+  function isCourseDetailShowing(course) {
+    return AppState && AppState.activeCourseId === course.id && !$('#view-course').hidden;
+  }
+
+  function updateVideoProgressUI(course) {
+    if (!isCourseDetailShowing(course)) return;
+    const pct = courseProgressPct(course);
+    const bar = $('#completionCard .completion-card__bar-fill');
+    if (bar) bar.style.width = pct + '%';
+    const pctLabel = $('#completionCard .completion-card__pct');
+    if (pctLabel) pctLabel.textContent = `${pct}% do vídeo assistido`;
+  }
+
+  function refreshCourseDetailStatus(course) {
+    const progress = AppState.courseProgress[course.id];
+    const pct = courseProgressPct(course);
+    const card = $('#completionCard');
+    if (card) card.innerHTML = renderCompletionCardHTML(course, progress, pct);
+    const lessonList = $('#lessonList');
+    if (lessonList) lessonList.innerHTML = renderLessonOutlineHTML(course, progress);
   }
 
   /* ------------------------------------------------------------------ *
-   * 9. EXPENSE TRACKER
+   * 11. EXPENSE TRACKER
    * ------------------------------------------------------------------ */
   let selectedCategory = null;
 
@@ -450,7 +765,7 @@
       chip.setAttribute('role', 'radio');
       chip.setAttribute('aria-checked', 'false');
       chip.dataset.category = cat.id;
-      chip.innerHTML = `<span aria-hidden="true">${cat.icon}</span><span>${cat.label}</span>`;
+      chip.innerHTML = `<span aria-hidden="true" style="display:flex;">${icon(cat.icon, 18)}</span><span>${cat.label}</span>`;
       chip.addEventListener('click', () => {
         selectedCategory = cat.id;
         $$('.category-chip', picker).forEach((c) => c.setAttribute('aria-checked', String(c === chip)));
@@ -462,7 +777,6 @@
     $('#expDate').value = new Date().toISOString().slice(0, 10);
 
     $('#expenseForm').addEventListener('submit', onSubmitExpense);
-    $('#budgetGoalInput').value = AppState.budgetGoal;
     $('#budgetGoalSave').addEventListener('click', onSaveBudgetGoal);
   }
 
@@ -547,6 +861,8 @@
   }
 
   function renderTrack() {
+    $('#budgetGoalInput').value = AppState.budgetGoal;
+
     const monthExpenses = currentMonthExpenses();
     const total = monthExpenses.reduce((s, e) => s + e.amount, 0);
     $('#budgetTotal').textContent = formatBRL(total) + ' / ' + formatBRL(AppState.budgetGoal);
@@ -566,7 +882,7 @@
       row.className = 'budget-bar-row';
       row.innerHTML = `
         <div class="budget-bar-row__head">
-          <span class="budget-bar-row__cat">${cat.icon} ${cat.label}</span>
+          <span class="budget-bar-row__cat" style="display:inline-flex;align-items:center;gap:6px;">${icon(cat.icon, 15)}${cat.label}</span>
           <span class="budget-bar-row__amt ledger">${formatBRL(amt)}</span>
         </div>
         <div class="budget-bar-track"><div class="budget-bar-track__fill ${fillClass}" style="width:${pctOfBudget}%"></div></div>
@@ -585,7 +901,7 @@
       const li = document.createElement('li');
       li.className = 'tx-item';
       li.innerHTML = `
-        <span class="tx-item__icon" aria-hidden="true">${cat.icon}</span>
+        <span class="tx-item__icon" aria-hidden="true">${icon(cat.icon, 18)}</span>
         <span class="tx-item__body">
           <span class="tx-item__desc">${e.description}</span>
           <span class="tx-item__meta">${cat.label} · ${formatDate(e.date)}</span>
@@ -605,15 +921,12 @@
   }
 
   /* ------------------------------------------------------------------ *
-   * 10. PROGRESS / CERTIFICATION
+   * 12. PROGRESS / CERTIFICATION
    * ------------------------------------------------------------------ */
   function renderProgress() {
-    const totalLessons = COURSES.reduce((s, c) => s + c.lessons.length, 0);
-    const doneLessons = COURSES.reduce((s, c) => {
-      const p = AppState.courseProgress[c.id];
-      return s + (p ? p.doneLessons.length : 0);
-    }, 0);
-    const overallPct = totalLessons ? Math.round((doneLessons / totalLessons) * 100) : 0;
+    const totalCourses = COURSES.length;
+    const sumPct = COURSES.reduce((s, c) => s + courseProgressPct(c), 0);
+    const overallPct = totalCourses ? Math.round(sumPct / totalCourses) : 0;
 
     const circumference = 2 * Math.PI * 52;
     $('#ringProgress').setAttribute('stroke-dasharray', circumference.toFixed(1));
@@ -635,7 +948,7 @@
       const card = document.createElement('div');
       card.className = 'cert-card';
       card.innerHTML = `
-        <span class="cert-card__badge" aria-hidden="true">🏅</span>
+        <span class="cert-card__badge" aria-hidden="true">${icon('award', 18)}</span>
         <span>
           <span class="cert-card__title">${course.title}</span>
           <span class="cert-card__date">Concluído em ${formatDate(progress.completedDate)}</span>
@@ -656,7 +969,7 @@
       row.style.width = '100%';
       row.style.textAlign = 'left';
       row.innerHTML = `
-        <span aria-hidden="true">${course.icon}</span>
+        <span aria-hidden="true" style="display:flex;color:var(--navy-800);">${icon(course.icon, 18)}</span>
         <span class="progress-course-row__title">${course.title}</span>
         <span class="progress-course-row__pct ledger">${pct}%</span>
       `;
@@ -683,17 +996,110 @@
   }
 
   /* ------------------------------------------------------------------ *
-   * 11. INIT
+   * 13. PROFILE (view/edit account, logout)
+   * ------------------------------------------------------------------ */
+  function initProfileModal() {
+    $('#profileToggle').addEventListener('click', openProfileModal);
+    $('#profileModalClose').addEventListener('click', closeProfileModal);
+    $('#profileModalOverlay').addEventListener('click', (e) => {
+      if (e.target === $('#profileModalOverlay')) closeProfileModal();
+    });
+    $('#profileForm').addEventListener('submit', onProfileSave);
+    $('#logoutBtn').addEventListener('click', () => { closeProfileModal(); logout(); });
+  }
+
+  function openProfileModal() {
+    if (!AppState) return;
+    $('#profileName').value = AppState.userName;
+    $('#profileEmail').value = AppState.email;
+    $('#profileNewPassword').value = '';
+    ['profileName', 'profileEmail', 'profileNewPassword'].forEach(clearFieldError);
+    $('#profileModalOverlay').hidden = false;
+    $('#profileToggle').setAttribute('aria-expanded', 'true');
+  }
+
+  function closeProfileModal() {
+    $('#profileModalOverlay').hidden = true;
+    $('#profileToggle').setAttribute('aria-expanded', 'false');
+  }
+
+  async function onProfileSave(evt) {
+    evt.preventDefault();
+    ['profileName', 'profileEmail', 'profileNewPassword'].forEach(clearFieldError);
+
+    const name = $('#profileName').value.trim();
+    const newEmail = $('#profileEmail').value.trim().toLowerCase();
+    const newPassword = $('#profileNewPassword').value;
+    let valid = true;
+
+    if (!name) { setFieldError('profileName', 'Informe seu nome.'); valid = false; }
+    if (!newEmail || !/^\S+@\S+\.\S+$/.test(newEmail)) { setFieldError('profileEmail', 'Informe um e-mail válido.'); valid = false; }
+    if (newPassword && newPassword.length < 4) { setFieldError('profileNewPassword', 'A senha deve ter ao menos 4 caracteres.'); valid = false; }
+
+    const users = getUsers();
+    const oldEmail = AppState.email;
+    if (newEmail !== oldEmail && users[newEmail]) {
+      setFieldError('profileEmail', 'Este e-mail já está em uso.');
+      valid = false;
+    }
+    if (!valid) return;
+
+    const btn = $('#profileSaveBtn');
+    btn.classList.add('is-loading'); btn.disabled = true;
+
+    const userRecord = users[oldEmail];
+    userRecord.name = name;
+    userRecord.email = newEmail;
+    if (newPassword) {
+      userRecord.salt = randomSalt();
+      userRecord.passwordHash = await hashPassword(newPassword, userRecord.salt);
+    }
+
+    if (newEmail !== oldEmail) {
+      delete users[oldEmail];
+      users[newEmail] = userRecord;
+      saveUsers(users);
+      AppState.email = newEmail;
+      saveStateForUser(newEmail, AppState);
+      localStorage.removeItem(STATE_PREFIX + oldEmail);
+      setSessionEmail(newEmail);
+    } else {
+      saveUsers(users);
+    }
+
+    AppState.userName = name;
+    save();
+
+    btn.classList.remove('is-loading'); btn.disabled = false;
+    closeProfileModal();
+    setGreeting();
+    renderHome();
+    showToast('Dados atualizados com sucesso.', 'success');
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 14. INIT
    * ------------------------------------------------------------------ */
   function init() {
-    load();
-    setGreeting();
+    initAuth();
     initNav();
     initCourseFilters();
     initExpenseForm();
     initCertModal();
-    renderHome();
-    goTo('home');
+    initProfileModal();
+
+    const sessionEmail = getSessionEmail();
+    const user = sessionEmail ? getUsers()[sessionEmail] : null;
+    const state = sessionEmail ? loadStateForUser(sessionEmail) : null;
+
+    if (sessionEmail && user && state) {
+      AppState = state;
+      showAppShell();
+      restoreSession();
+    } else {
+      setSessionEmail(null);
+      showAuthScreen();
+    }
   }
 
   document.addEventListener('DOMContentLoaded', init);
