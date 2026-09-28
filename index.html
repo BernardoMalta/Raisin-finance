@@ -32,7 +32,7 @@
     <!-- Desktop / tablet horizontal nav -->
     <nav class="app-nav" id="desktopNav" aria-label="Navegação principal">
       <button class="app-nav__link is-active" data-tab="home">Início</button>
-      <button class="app-nav__link" data-tab="learn">Aprender</button>
+      <button class="app-nav__link" data-tab="learn">Estudos</button>
       <button class="app-nav__link" data-tab="track">Despesas</button>
       <button class="app-nav__link" data-tab="progress">Progresso</button>
     </nav>
@@ -93,17 +93,23 @@
       </div>
       <div class="quick-grid">
         <button class="quick-card" data-goto="learn">
-          <span class="quick-card__icon" aria-hidden="true">📚</span>
+          <span class="quick-card__icon" aria-hidden="true">
+            <svg class="i" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5C10.5 5 8 4.5 4 5v13c4-.5 6.5 0 8 1.5M12 6.5C13.5 5 16 4.5 20 5v13c-4-.5-6.5 0-8 1.5M12 6.5V20"/></svg>
+          </span>
           <span class="quick-card__title">Central de conteúdo</span>
           <span class="quick-card__desc">Cursos, artigos e vídeos</span>
         </button>
         <button class="quick-card" data-goto="track">
-          <span class="quick-card__icon" aria-hidden="true">🧾</span>
+          <span class="quick-card__icon" aria-hidden="true">
+            <svg class="i" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-2.5-1.6L13 21l-2.5-1.6L8 21l-2-1.4V3Z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+          </span>
           <span class="quick-card__title">Lançar despesa</span>
           <span class="quick-card__desc">Registre um novo gasto</span>
         </button>
         <button class="quick-card" data-goto="progress">
-          <span class="quick-card__icon" aria-hidden="true">🏅</span>
+          <span class="quick-card__icon" aria-hidden="true">
+            <svg class="i" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="6"/><path d="M9 14.5 7.5 21 12 18.5 16.5 21 15 14.5"/></svg>
+          </span>
           <span class="quick-card__title">Meu progresso</span>
           <span class="quick-card__desc">Certificados e conquistas</span>
         </button>
@@ -112,9 +118,10 @@
 
     <div class="section-block">
       <div class="section-block__head">
-        <h2>Continue aprendendo</h2>
-        <button class="text-link" data-goto="learn">Ver tudo</button>
+        <h2>Seu aprendizado</h2>
+        <button class="text-link" data-goto="learn">Ver estudos</button>
       </div>
+      <div class="study-resume" id="studyResume"></div>
       <div class="scroll-row" id="homeCourseRow"></div>
     </div>
   </section>
@@ -122,18 +129,17 @@
   <!-- ---------- LEARN / CONTENT HUB ---------- -->
   <section class="view" id="view-learn" data-view="learn" hidden>
     <div class="page-head">
-      <p class="page-head__eyebrow">Central de conteúdo</p>
-      <h1 class="page-head__title">Aprender</h1>
-      <p class="page-head__subtitle">Trilhas curtas para você aplicar hoje mesmo.</p>
+      <p class="page-head__eyebrow">Sua escola financeira</p>
+      <h1 class="page-head__title">Estudos</h1>
+      <p class="page-head__subtitle">Organize, guarde, entenda e invista — no seu ritmo.</p>
     </div>
+
+    <div class="study-hero" id="studyHero"></div>
 
     <div class="filter-row" id="courseFilters" role="tablist" aria-label="Filtrar por categoria">
       <button class="chip is-active" data-filter="all">Tudo</button>
       <button class="chip" data-filter="fundamentos">Fundamentos</button>
-      <button class="chip" data-filter="orcamento">Orçamento</button>
-      <button class="chip" data-filter="reserva">Reserva</button>
       <button class="chip" data-filter="investimentos">Investimentos</button>
-      <button class="chip" data-filter="metas">Metas</button>
     </div>
 
     <div class="course-list" id="courseList"></div>
@@ -149,6 +155,15 @@
     <div class="course-detail" id="courseDetail">
       <!-- populated by JS -->
     </div>
+  </section>
+
+  <!-- ---------- LESSON PLAYER ---------- -->
+  <section class="view" id="view-lesson" data-view="lesson" hidden>
+    <button class="back-btn" id="lessonBackBtn">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M11 3L5 9L11 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Voltar ao curso
+    </button>
+    <div id="lessonDetail"></div>
   </section>
 
   <!-- ---------- EXPENSE TRACKER ---------- -->
@@ -273,7 +288,7 @@
   </button>
   <button class="bottom-nav__item" data-tab="learn">
     <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M3 5.5C3 4.7 3.7 4 4.5 4H10V18H4.5C3.7 18 3 17.3 3 16.5V5.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M19 5.5C19 4.7 18.3 4 17.5 4H12V18H17.5C18.3 18 19 17.3 19 16.5V5.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-    <span>Aprender</span>
+    <span>Estudos</span>
   </button>
   <button class="bottom-nav__item" data-tab="track">
     <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="4" y="3" width="14" height="16" rx="1.5" stroke="currentColor" stroke-width="2"/><path d="M7.5 8H14.5M7.5 11.5H14.5M7.5 15H11.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -291,7 +306,9 @@
 <!-- ===== CERTIFICATE MODAL ===== -->
 <div class="modal-overlay" id="certModalOverlay" hidden>
   <div class="modal cert-modal" role="dialog" aria-modal="true" aria-labelledby="certModalTitle">
-    <button class="modal__close" id="certModalClose" aria-label="Fechar">✕</button>
+    <button class="modal__close" id="certModalClose" aria-label="Fechar">
+      <svg class="i" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
     <div class="certificate" id="certificateArt">
       <p class="certificate__eyebrow">Raisin Finance</p>
       <h2 class="certificate__title" id="certModalTitle">Certificado de Conclusão</h2>
@@ -300,7 +317,11 @@
       <p class="certificate__body">por concluir com êxito o curso</p>
       <p class="certificate__course" id="certCourseName">—</p>
       <p class="certificate__date" id="certDate">—</p>
-      <div class="certificate__seal" aria-hidden="true">✓</div>
+      <p class="certificate__date" id="certHours">—</p>
+      <p class="certificate__date" id="certCode">—</p>
+      <div class="certificate__seal" aria-hidden="true">
+        <svg class="i" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
+      </div>
     </div>
     <button class="btn btn--primary btn--block" id="certPrintBtn">Baixar / Imprimir certificado</button>
   </div>
