@@ -125,7 +125,9 @@ a { color: inherit; }
 #mainContent {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px 16px calc(var(--bottom-nav-h) + 32px);
+  padding: 20px 16px calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 32px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
 .view { animation: viewFade 0.28s ease; }
 @keyframes viewFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
@@ -653,7 +655,7 @@ a { color: inherit; }
 .bottom-nav {
   position: fixed;
   bottom: 0; left: 0; right: 0;
-  height: var(--bottom-nav-h);
+  height: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px));
   background: var(--bg-raised);
   border-top: 1px solid var(--border);
   display: flex;
@@ -728,6 +730,7 @@ a { color: inherit; }
   max-width: 420px;
   position: relative;
   max-height: 90vh;
+  max-height: 90dvh; /* iOS: excludes the Safari toolbar */
   overflow-y: auto;
 }
 .modal__close {
@@ -775,6 +778,7 @@ a { color: inherit; }
    ========================================================================== */
 .auth-screen {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -813,7 +817,7 @@ a { color: inherit; }
    TABLET  (≥768px)
    ========================================================================== */
 @media (min-width: 768px) {
-  #mainContent { padding: 28px 32px calc(var(--bottom-nav-h) + 32px); }
+  #mainContent { padding: 28px 32px calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 32px); }
   .stat-grid { grid-template-columns: repeat(4, 1fr); gap: 16px; }
   .quick-grid { grid-template-columns: repeat(3, 1fr); }
   .field-row { flex-direction: row; }
@@ -1268,7 +1272,7 @@ code { font-family: var(--font-ledger); font-size: 0.92em; background: rgba(11,3
 .adm-option input[type="radio"] { width: 18px; height: 18px; accent-color: var(--accent-teal); flex-shrink: 0; }
 .adm-option__letter { font-weight: 700; font-size: 12px; color: var(--text-secondary); width: 14px; }
 .admin-savebar {
-  position: sticky; bottom: calc(var(--bottom-nav-h) + 12px); z-index: 30;
+  position: sticky; bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 12px); z-index: 30;
   display: flex; align-items: center; gap: 10px; margin-top: 18px;
   background: var(--bg-raised); border: 1px solid var(--border); border-radius: var(--radius-md);
   padding: 10px 12px; box-shadow: var(--shadow-raised); font-size: 13px; color: var(--text-secondary);
@@ -1356,7 +1360,7 @@ code { font-family: var(--font-ledger); font-size: 0.92em; background: rgba(11,3
   .stat-card__value { font-size: 16px; }
   .xp-rules { grid-template-columns: 1fr; }
   .quiz-card, .expense-form, .learn-card, .side-card { padding: 14px; }
-  .bottom-nav__item { font-size: 9.5px; }
+  .bottom-nav__item { font-size: 10.5px; letter-spacing: -0.01em; }
   .level-card { padding: 16px; }
   .level-card__name { font-size: 19px; }
   .lesson-title { font-size: 20px; }
@@ -1377,3 +1381,38 @@ code { font-family: var(--font-ledger); font-size: 0.92em; background: rgba(11,3
   .hero__chart { grid-column: 2; grid-row: 1 / span 3; align-self: end; }
 }
 .hero__title { color: var(--white); }
+
+/* ==========================================================================
+   MOBILE FORM FIXES
+   ========================================================================== */
+/* iOS Safari zooms the whole page when focusing a field under 16px, which
+   makes the layout look cut off at the edges. Keep every field at 16px on
+   phones and tablets. */
+@media (max-width: 1023px) {
+  body input:not([type="radio"]):not([type="checkbox"]):not([type="color"]),
+  body select,
+  body textarea,
+  .adm-field select,
+  .adm-field textarea { font-size: 16px; }
+}
+
+/* Date inputs have an intrinsic minimum width on iOS that ignores
+   width: 100% and pushes the box past its card. */
+input[type="date"] { min-width: 0; max-width: 100%; display: block; }
+@supports (-webkit-touch-callout: none) {
+  input[type="date"] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-height: var(--tap-min);
+    line-height: normal;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  input[type="date"]::-webkit-date-and-time-value { text-align: left; margin: 0; }
+}
+
+/* Certificate code never splits across lines. */
+.certificate__code strong { white-space: nowrap; }
+/* Quiz result actions share the row evenly and stack full-width when narrow. */
+.quiz-result__actions { width: 100%; max-width: 380px; }
+.quiz-result__actions .btn { flex: 1 1 150px; }
