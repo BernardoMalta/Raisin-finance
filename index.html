@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Raisin Finance — Sua jornada financeira</title>
 <meta name="description" content="Aprenda a cuidar do seu dinheiro: cursos, rastreamento de despesas e progresso, tudo em um só lugar.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26'%3E%3Crect width='26' height='26' rx='6' fill='%230B2545'/%3E%3Cpath d='M7 16L11 10L14.5 13.5L19 7' stroke='%238FD8C4' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
@@ -90,10 +91,11 @@
 
     <!-- Desktop / tablet horizontal nav -->
     <nav class="app-nav" id="desktopNav" aria-label="Navegação principal">
-      <button class="app-nav__link is-active" data-tab="home">Início</button>
+      <button class="app-nav__link is-active" data-tab="home">Dashboard</button>
+      <button class="app-nav__link" data-tab="track">Gastos</button>
       <button class="app-nav__link" data-tab="learn">Estudos</button>
-      <button class="app-nav__link" data-tab="track">Despesas</button>
-      <button class="app-nav__link" data-tab="progress">Progresso</button>
+      <button class="app-nav__link" data-tab="progress">Conquistas</button>
+      <button class="app-nav__link" data-tab="admin" hidden>Admin</button>
     </nav>
   </div>
 </header>
@@ -135,9 +137,9 @@
         <div class="mini-bar"><div class="mini-bar__fill" id="statSavingsBar" style="width:0%"></div></div>
       </div>
       <div class="stat-card">
-        <p class="stat-card__label">Cursos em andamento</p>
-        <p class="stat-card__value ledger" id="statCourses">0 / 5</p>
-        <p class="stat-card__foot">Continue de onde parou</p>
+        <p class="stat-card__label">Cursos concluídos</p>
+        <p class="stat-card__value ledger" id="statCourses">0 / 0</p>
+        <p class="stat-card__foot">Na área de Estudos</p>
       </div>
       <div class="stat-card">
         <p class="stat-card__label">Certificados</p>
@@ -155,8 +157,8 @@
           <span class="quick-card__icon" aria-hidden="true">
             <svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5C3 4.4 3.4 4 4 4H9V16H4C3.4 16 3 15.6 3 15V5Z"/><path d="M17 5C17 4.4 16.6 4 16 4H11V16H16C16.6 16 17 15.6 17 15V5Z"/></svg>
           </span>
-          <span class="quick-card__title">Central de conteúdo</span>
-          <span class="quick-card__desc">Cursos, artigos e vídeos</span>
+          <span class="quick-card__title">Estudos</span>
+          <span class="quick-card__desc">Cursos, trilha e biblioteca</span>
         </button>
         <button class="quick-card" data-goto="track">
           <span class="quick-card__icon" aria-hidden="true">
@@ -169,61 +171,50 @@
           <span class="quick-card__icon" aria-hidden="true">
             <svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="7" r="4.5"/><path d="M7 11L5.5 18L10 15.5L14.5 18L13 11"/></svg>
           </span>
-          <span class="quick-card__title">Meu progresso</span>
-          <span class="quick-card__desc">Certificados e conquistas</span>
+          <span class="quick-card__title">Conquistas</span>
+          <span class="quick-card__desc">XP, nível e certificados</span>
         </button>
       </div>
     </div>
 
-    <div class="section-block">
-      <div class="section-block__head">
-        <h2>Seu aprendizado</h2>
-        <button class="text-link" data-goto="learn">Ver estudos</button>
-      </div>
-      <div class="study-resume" id="studyResume"></div>
-      <div class="scroll-row" id="homeCourseRow"></div>
-    </div>
+    <div class="section-block" id="homeLearning"></div>
   </section>
 
-  <!-- ---------- LEARN / CONTENT HUB ---------- -->
+  <!-- ---------- ESTUDOS ---------- -->
   <section class="view" id="view-learn" data-view="learn" hidden>
     <div class="page-head">
-      <p class="page-head__eyebrow">Sua escola financeira</p>
+      <p class="page-head__eyebrow">Escola financeira</p>
       <h1 class="page-head__title">Estudos</h1>
-      <p class="page-head__subtitle">Organize, guarde, entenda e invista — no seu ritmo.</p>
+      <p class="page-head__subtitle">Aulas em vídeo, questionários e uma trilha do básico aos investimentos.</p>
     </div>
-
-    <div class="study-hero" id="studyHero"></div>
-
-    <div class="filter-row" id="courseFilters" role="tablist" aria-label="Filtrar por categoria">
-      <button class="chip is-active" data-filter="all">Tudo</button>
-      <button class="chip" data-filter="fundamentos">Fundamentos</button>
-      <button class="chip" data-filter="orcamento">Orçamento</button>
-      <button class="chip" data-filter="reserva">Reserva</button>
-      <button class="chip" data-filter="investimentos">Investimentos</button>
-      <button class="chip" data-filter="metas">Metas</button>
-    </div>
-
-    <div class="course-list" id="courseList"></div>
+    <div id="studiesBody"></div>
   </section>
 
-  <!-- ---------- COURSE DETAIL (lesson view) ---------- -->
+  <!-- ---------- COURSE PAGE ---------- -->
   <section class="view" id="view-course" data-view="course" hidden>
-    <button class="back-btn" id="courseBackBtn">
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M11 3L5 9L11 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Voltar
-    </button>
+    <div id="courseDetail"></div>
+  </section>
 
-    <div class="course-detail" id="courseDetail">
-      <!-- populated by JS -->
-    </div>
+  <!-- ---------- LESSON PAGE ---------- -->
+  <section class="view" id="view-lesson" data-view="lesson" hidden>
+    <div id="lessonBody"></div>
+  </section>
+
+  <!-- ---------- QUIZ ---------- -->
+  <section class="view" id="view-quiz" data-view="quiz" hidden>
+    <div id="quizBody"></div>
+  </section>
+
+  <!-- ---------- LIBRARY ---------- -->
+  <section class="view" id="view-library" data-view="library" hidden>
+    <div id="libraryBody"></div>
   </section>
 
   <!-- ---------- EXPENSE TRACKER ---------- -->
   <section class="view" id="view-track" data-view="track" hidden>
     <div class="page-head">
       <p class="page-head__eyebrow">Ferramenta financeira</p>
-      <h1 class="page-head__title">Despesas</h1>
+      <h1 class="page-head__title">Gastos</h1>
       <p class="page-head__subtitle">Registre um gasto e acompanhe seu orçamento em tempo real.</p>
     </div>
 
@@ -288,47 +279,15 @@
   <section class="view" id="view-progress" data-view="progress" hidden>
     <div class="page-head">
       <p class="page-head__eyebrow">Sua trajetória</p>
-      <h1 class="page-head__title">Progresso</h1>
-      <p class="page-head__subtitle">O que você já conquistou até aqui.</p>
+      <h1 class="page-head__title">Conquistas</h1>
+      <p class="page-head__subtitle">Seu nível, seu XP e o que você já concluiu.</p>
     </div>
+    <div id="achievementsBody"></div>
+  </section>
 
-    <div class="progress-overview">
-      <div class="ring-card">
-        <svg class="ring" viewBox="0 0 120 120" width="120" height="120">
-          <circle cx="60" cy="60" r="52" fill="none" stroke="#DCE4EE" stroke-width="10"/>
-          <circle id="ringProgress" cx="60" cy="60" r="52" fill="none" stroke="#0B2545" stroke-width="10" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="326.7" transform="rotate(-90 60 60)"/>
-        </svg>
-        <div class="ring-card__center">
-          <span class="ledger ring-card__num" id="ringLabel">0%</span>
-          <span class="ring-card__caption">concluído</span>
-        </div>
-      </div>
-      <div class="progress-overview__stats">
-        <div class="mini-stat">
-          <span class="ledger mini-stat__num" id="progCoursesDone">0</span>
-          <span class="mini-stat__label">cursos concluídos</span>
-        </div>
-        <div class="mini-stat">
-          <span class="ledger mini-stat__num" id="progSaved">R$ 0,00</span>
-          <span class="mini-stat__label">economizado este mês</span>
-        </div>
-        <div class="mini-stat">
-          <span class="ledger mini-stat__num" id="progCerts">0</span>
-          <span class="mini-stat__label">certificados</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="section-block">
-      <div class="section-block__head"><h2>Certificados</h2></div>
-      <div class="cert-list" id="certList"></div>
-      <p class="empty-state" id="certEmptyState">Conclua um curso na aba Aprender para desbloquear seu primeiro certificado.</p>
-    </div>
-
-    <div class="section-block">
-      <div class="section-block__head"><h2>Todos os cursos</h2></div>
-      <div class="progress-course-list" id="progressCourseList"></div>
-    </div>
+  <!-- ---------- ADMIN ---------- -->
+  <section class="view" id="view-admin" data-view="admin" hidden>
+    <div id="adminBody"></div>
   </section>
 
 </main>
@@ -337,19 +296,23 @@
 <nav class="bottom-nav" aria-label="Navegação principal mobile">
   <button class="bottom-nav__item is-active" data-tab="home">
     <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M3 10L11 3L19 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 9V18H17V9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    <span>Início</span>
+    <span>Dashboard</span>
+  </button>
+  <button class="bottom-nav__item" data-tab="track">
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="4" y="3" width="14" height="16" rx="1.5" stroke="currentColor" stroke-width="2"/><path d="M7.5 8H14.5M7.5 11.5H14.5M7.5 15H11.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    <span>Gastos</span>
   </button>
   <button class="bottom-nav__item" data-tab="learn">
     <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M3 5.5C3 4.7 3.7 4 4.5 4H10V18H4.5C3.7 18 3 17.3 3 16.5V5.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M19 5.5C19 4.7 18.3 4 17.5 4H12V18H17.5C18.3 18 19 17.3 19 16.5V5.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
     <span>Estudos</span>
   </button>
-  <button class="bottom-nav__item" data-tab="track">
-    <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="4" y="3" width="14" height="16" rx="1.5" stroke="currentColor" stroke-width="2"/><path d="M7.5 8H14.5M7.5 11.5H14.5M7.5 15H11.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-    <span>Despesas</span>
-  </button>
   <button class="bottom-nav__item" data-tab="progress">
     <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="8" r="5" stroke="currentColor" stroke-width="2"/><path d="M7.5 12.5L6 19L11 16.5L16 19L14.5 12.5" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-    <span>Progresso</span>
+    <span>Conquistas</span>
+  </button>
+  <button class="bottom-nav__item" data-tab="admin" hidden>
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="3" stroke="currentColor" stroke-width="2"/><path d="M11 2.5V5M11 17V19.5M2.5 11H5M17 11H19.5M5 5L6.8 6.8M15.2 15.2L17 17M5 17L6.8 15.2M15.2 6.8L17 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    <span>Admin</span>
   </button>
 </nav>
 
@@ -375,7 +338,16 @@
       <p class="certificate__name" id="certUserName">Você</p>
       <p class="certificate__body">por concluir com êxito o curso</p>
       <p class="certificate__course" id="certCourseName">—</p>
+      <p class="certificate__body" id="certHours">—</p>
       <p class="certificate__date" id="certDate">—</p>
+      <div class="certificate__verify">
+        <div class="certificate__qr" id="certQr" aria-label="QR Code de verificação"></div>
+        <div class="certificate__code">
+          <span>Código de validação</span>
+          <strong class="ledger" id="certCode">—</strong>
+          <a href="#" id="certVerifyLink" target="_blank" rel="noopener">Verificar autenticidade</a>
+        </div>
+      </div>
     </div>
     <button class="btn btn--primary btn--block" id="certPrintBtn">Baixar / Imprimir certificado</button>
   </div>
@@ -388,6 +360,7 @@
       <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5L15 15M15 5L5 15"/></svg>
     </button>
     <h2 class="course-detail__title" id="profileModalTitle" style="font-size:19px;margin-top:0;">Meu perfil</h2>
+    <div class="profile-level" id="profileLevel"></div>
     <form class="expense-form modal-form--plain" id="profileForm" novalidate>
       <div class="field">
         <label for="profileName">Nome</label>
@@ -413,6 +386,24 @@
   </div>
 </div>
 
+<!-- ===== CERTIFICATE VERIFICATION (public, no login) ===== -->
+<div class="auth-screen" id="verifyScreen" hidden>
+  <div class="auth-card verify">
+    <div class="brand auth-card__brand">
+      <span class="brand__mark" aria-hidden="true">
+        <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+          <circle cx="13" cy="13" r="12" stroke="currentColor" stroke-width="2"/>
+          <path d="M8 15L11 10L14.5 13.5L18 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <span class="brand__name">Raisin<span class="brand__accent">Finance</span></span>
+    </div>
+    <div id="verifyBody"></div>
+    <button class="btn btn--ghost btn--block" id="verifyHomeBtn">Ir para a Raisin Finance</button>
+  </div>
+</div>
+
+<script src="courses.js"></script>
 <script src="script.js"></script>
 </body>
 </html>

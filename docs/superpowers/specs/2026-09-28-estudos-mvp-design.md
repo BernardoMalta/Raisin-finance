@@ -1,54 +1,42 @@
-# MVP — Área de Estudos
+# Área de Estudos — escopo implementado
+
+> Atualizado em 28/09/2026. A versão anterior deste documento definia um MVP enxuto para a competição (sem admin, sem QR, sem medição de 95%). O escopo foi ampliado para a especificação completa da área de Estudos; os limites que continuam valendo por falta de backend estão na última seção.
 
 ## Objetivo
 
-Transformar a Raisin Finance em uma demonstração de plataforma de educação financeira: o aluno encontra cursos, acompanha uma trilha progressiva, realiza aulas e quizzes, ganha XP e emite certificados.
+Uma "escola financeira dentro da plataforma": o usuário controla o dinheiro e também tem um caminho para aprender — Organizar → Guardar → Entender → Investir → Evoluir.
 
-## Escopo da competição
+## Arquivos
 
-O projeto permanece uma aplicação estática em HTML, CSS e JavaScript. Não haverá autenticação, banco de dados, upload de conteúdo ou painel administrativo neste MVP. Os dados de demonstração e o progresso individual serão gravados no `localStorage` do navegador.
+- `courses.js` — só dados: cursos → módulos → aulas, quizzes, trilha, biblioteca (artigos, vídeos rápidos, glossário) e o aviso educativo. Todos os vídeos do YouTube foram verificados como públicos e incorporáveis.
+- `script.js` — lógica (login, navegação, estudos, XP, certificado, admin, gastos).
+- `index.html` / `style.css` — telas e estilos.
 
-## Navegação e telas
+## O que existe
 
-- O menu principal exibirá **Estudos** no lugar da atual aba Aprender.
-- A página Estudos terá uma trilha recomendada, resumo de XP e cards de cursos com capa, nível, quantidade/duração de aulas e progresso.
-- Cada curso terá módulos e aulas ordenadas. A primeira aula disponível será destacada como a próxima aula; aulas seguintes ficam bloqueadas até a anterior ser concluída.
-- A tela da aula reunirá vídeo incorporado, objetivos de aprendizagem, resumo, material complementar e a ação de concluir aula. Na demonstração, a conclusão poderá ser habilitada após a interação com o vídeo; não será implementada medição confiável de 95% de reprodução, pois os vídeos são hospedados pelo YouTube e o MVP não tem uma integração de player.
-- Ao terminar um módulo, um quiz curto libera XP. A resposta e a pontuação são persistidas.
-- Ao concluir todas as aulas de um curso, o certificado existente será enriquecido com carga horária e um código de validação visual.
-- O Dashboard exibirá o curso atual, porcentagem e botão para retomar na próxima aula.
+- **Menu:** Dashboard · Gastos · Estudos · Conquistas · Admin (só para administradores). Receitas, Metas e Investimentos ainda não existem como telas.
+- **Estudos:** cards de curso com capa, descrição, nº de aulas, duração, nível e progresso; "continue de onde parou"; trilha de 8 passos; atalhos da biblioteca.
+- **Cursos:** *Finanças do Zero* (3 módulos, 17 aulas) e *Investimentos para Iniciantes* (4 módulos, 27 aulas), com a estrutura de módulos da especificação.
+- **Aula:** página própria com vídeo, "O que você vai aprender", resumo, material complementar (PDF, link, texto, infográfico, glossário), navegação anterior/próxima e sumário lateral com status (concluída, em andamento, bloqueada).
+- **Conclusão por vídeo:** a aula conclui sozinha quando **95% do vídeo foi realmente assistido**. O player registra só os trechos reproduzidos em tempo real (até 2x de velocidade); pular para o fim não conta. Aulas sem vídeo são concluídas pela leitura.
+- **Bloqueio sequencial:** cada aula libera a próxima. O quiz do módulo libera quando todas as aulas do módulo terminam.
+- **Quiz:** 4 perguntas por módulo, feedback imediato com explicação, resultado salvo no perfil (melhor nota, tentativas).
+- **XP e níveis:** aula +10, acerto +20, módulo +50, curso +200, cada um concedido uma única vez. Níveis: Iniciante (0), Aprendiz (150), Conhecedor (450), Investidor (900), Especialista (1500).
+- **Certificado:** nome, curso, carga horária, data, código de validação e QR Code que abre a página pública `#verificar/...`.
+- **Biblioteca:** artigos, vídeos rápidos e glossário com busca.
+- **Dashboard:** card "Seu aprendizado" com curso atual, % e próxima aula.
+- **Admin:** criar/editar/excluir/reordenar cursos, módulos, aulas e perguntas; definir resposta correta; vídeo por link do YouTube ou MP4; materiais por link; métricas de alunos e progresso; exportar/importar JSON; restaurar padrão; promover outros admins.
 
-## Conteúdo de demonstração
+## Limites (sem backend)
 
-Dois cursos serão exibidos:
-
-1. **Finanças do Zero** — organização financeira, orçamento, hábitos de economia, reserva e princípios de investimento.
-2. **Investimentos para Iniciantes** — perfil de risco, renda fixa, renda variável e estratégia de aportes/diversificação.
-
-O conteúdo usará linguagem simples, exemplos práticos e um aviso educativo: rentabilidade não é garantida e investimentos têm riscos.
-
-## Estado e dados
-
-`AppState` passará a guardar cursos, módulos, aulas, progresso, aula atual, quizzes respondidos, XP e certificados. `load()` e `save()` usarão `localStorage`, com dados iniciais apenas na primeira visita e mecanismo seguro para dados inválidos.
-
-## Pontuação
-
-- Concluir aula: +10 XP.
-- Acertar quiz: +20 XP.
-- Concluir módulo: +50 XP.
-- Concluir curso: +200 XP.
-
-O nível será apresentado como uma progressão visual simples, sem ranking ou recursos sociais.
-
-## Limites explícitos
-
-- Sem aconselhamento financeiro individual.
-- Sem promessa de retorno ou recomendação de ativos.
-- Sem login, analytics, upload, QR Code real ou verificação pública de certificado.
-- O "vídeo assistido" é demonstrativo e não pode impedir burlas em um front-end sem servidor.
+- Tudo fica no `localStorage` do navegador. O Admin edita o conteúdo **deste navegador**; para publicar para todos, exporte o JSON e substitua os dados do `courses.js`.
+- O primeiro usuário a entrar num navegador vira administrador.
+- Upload de arquivos não existe: vídeos e PDFs entram por link.
+- Métricas de alunos contam só as contas criadas no mesmo navegador.
+- O código do certificado é um hash dos dados; a página de verificação detecta edição casual, mas quem ler o código-fonte consegue gerar códigos válidos. Autenticidade real exige um servidor que assine os certificados.
+- A medição de 95% impede pular o vídeo pela interface, mas não impede quem edita o `localStorage` manualmente.
+- Os vídeos do YouTube precisam que o site seja servido por HTTP(S) (ex.: GitHub Pages ou `python -m http.server`); abrindo o `index.html` direto do disco o player pode recusar a reprodução.
 
 ## Verificação
 
-- Exercitar navegação entre Dashboard, Estudos, curso e aula.
-- Verificar desbloqueio sequencial, quiz, XP, certificado e persistência após atualizar a página.
-- Checar layout em viewport mobile e desktop e executar validação sintática do JavaScript.
+Teste de ponta a ponta com Chrome headless (47 verificações): cadastro e papéis, bloqueio de aulas, reprodução real no YouTube com tentativa de pular para 97% (não concluiu), conclusão de curso, XP, certificado + QR + verificação válida e adulterada, quiz e refazer sem XP duplicado, biblioteca, admin (edição, validação, salvar, restaurar), escape de HTML (sem XSS) e layout mobile 390px sem rolagem horizontal.
