@@ -1302,3 +1302,78 @@ code { font-family: var(--font-ledger); font-size: 0.92em; background: rgba(11,3
 @media (min-width: 768px) {
   .toast-stack { left: auto; right: 20px; width: 380px; }
 }
+
+/* ==========================================================================
+   RESPONSIVE FIXES (small phones → desktop)
+   ========================================================================== */
+/* Section headings wrap instead of squeezing the aside text. */
+.section-block__head { flex-wrap: wrap; gap: 4px 12px; }
+
+/* Expense form: category chips never outgrow their grid column. */
+.category-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.category-chip { min-width: 0; }
+.category-chip { padding: 6px 10px; line-height: 1.25; }
+.category-chip > span:last-child { min-width: 0; hyphens: auto; -webkit-hyphens: auto; overflow-wrap: break-word; }
+
+/* Budget summary header: title and total stack when there is no room. */
+.budget-summary .section-block__head { align-items: baseline; }
+.budget-total { overflow-wrap: anywhere; }
+.budget-goal-row input { min-width: 0; }
+
+/* Transaction rows: long descriptions are truncated, not stretched. */
+.tx-item__desc, .tx-item__meta { display: block; }
+.tx-item__meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Rows rendered as buttons keep left-aligned, full-width content. */
+.progress-course-row { width: 100%; text-align: left; }
+
+/* Certificate verify link gets a comfortable tap area. */
+.certificate__code a { display: inline-block; padding: 8px 0; }
+
+/* Admin on small screens: module title gets its own line, lesson actions
+   drop below the title, save bar wraps. */
+@media (max-width: 599px) {
+  .adm-module__head { flex-wrap: wrap; }
+  .adm-module__head input { flex: 1 1 100%; order: 3; }
+  .adm-module__head .adm-actions { margin-left: auto; }
+  .adm-lesson__row { flex-wrap: wrap; padding: 8px 8px 6px 12px; row-gap: 2px; }
+  .adm-lesson__title { flex: 1 1 calc(100% - 40px); white-space: normal; }
+  .adm-lesson__meta { margin-right: auto; }
+  .adm-option input[type="text"] { min-width: 0; }
+  .admin-savebar { flex-wrap: wrap; }
+  .admin-savebar span { flex: 1 1 100%; }
+  .admin-savebar .btn { flex: 1; }
+  .adm-panel { padding: 14px; }
+  .adm-editor { padding: 10px; }
+}
+
+/* Very small phones (≤ 374px). */
+@media (max-width: 374px) {
+  #mainContent { padding-left: 12px; padding-right: 12px; }
+  .page-head__title { font-size: 23px; }
+  .stat-grid { gap: 8px; }
+  .stat-card { padding: 12px; }
+  .stat-card__value { font-size: 16px; }
+  .xp-rules { grid-template-columns: 1fr; }
+  .quiz-card, .expense-form, .learn-card, .side-card { padding: 14px; }
+  .bottom-nav__item { font-size: 9.5px; }
+  .level-card { padding: 16px; }
+  .level-card__name { font-size: 19px; }
+  .lesson-title { font-size: 20px; }
+  .course-hero__title { font-size: 22px; }
+}
+
+/* Desktop app bar: brand left, nav + profile grouped on the right. */
+@media (min-width: 1024px) {
+  .app-nav { margin-left: auto; margin-right: 8px; }
+  .app-bar__profile-btn { order: 3; }
+}
+
+/* Desktop hero: text stacked in the left column, chart on the right. */
+@media (min-width: 1024px) {
+  .hero { grid-template-rows: auto auto 1fr; row-gap: 0; }
+  .hero__eyebrow, .hero__title, .hero__subtitle { grid-column: 1; }
+  .hero__subtitle { align-self: start; margin-bottom: 32px; }
+  .hero__chart { grid-column: 2; grid-row: 1 / span 3; align-self: end; }
+}
+.hero__title { color: var(--white); }

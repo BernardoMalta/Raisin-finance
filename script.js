@@ -25,7 +25,7 @@
     { id: 'alimentacao', label: 'Alimentação', icon: 'plate' },
     { id: 'transporte', label: 'Transporte', icon: 'bus' },
     { id: 'moradia', label: 'Moradia', icon: 'home' },
-    { id: 'entretenimento', label: 'Entretenimento', icon: 'film' },
+    { id: 'entretenimento', label: 'Entreteni\u00admento', icon: 'film' }, // soft hyphen for narrow phones
     { id: 'educacao', label: 'Educação', icon: 'book' },
     { id: 'poupanca', label: 'Poupança', icon: 'coins' },
     { id: 'saude', label: 'Saúde', icon: 'heart' },
@@ -207,7 +207,8 @@
   }
 
   function formatBRL(value) {
-    return 'R$ ' + Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    // Non-breaking space keeps "R$" glued to the amount when it wraps.
+    return 'R$ ' + Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
   function formatDate(isoStr) {
