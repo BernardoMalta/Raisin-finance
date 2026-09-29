@@ -7,7 +7,7 @@
 Registre seus gastos, acompanhe o orçamento e aprenda de verdade, com aulas em vídeo,
 questionários, trilha guiada e certificado, do primeiro orçamento aos primeiros investimentos.
 
-[**Abrir o site →**](https://bernardomalta.github.io/Raisin-finance/)
+[**Abrir o site →**](https://vihni7.github.io/Raisin-finance/)
 
 ![HTML](https://img.shields.io/badge/HTML5-0B2545?logo=html5&logoColor=white)
 ![CSS](https://img.shields.io/badge/CSS3-0B2545?logo=css3&logoColor=white)
@@ -86,36 +86,47 @@ Todo o conteúdo é educativo: a plataforma deixa claro que rentabilidade não �
 Não há build nem dependências. Só é preciso servir a pasta por HTTP, porque o player do YouTube não funciona abrindo o arquivo direto do disco:
 
 ```bash
-git clone https://github.com/BernardoMalta/Raisin-finance.git
+git clone https://github.com/Vihni7/Raisin-finance.git
 cd Raisin-finance
 python -m http.server 8000
 # abra http://localhost:8000
 ```
 
-> **Primeiro acesso:** a primeira conta criada no navegador vira administradora e ganha acesso à aba **Admin**.
+> **Primeiro acesso:** sem Supabase configurado, o site roda em modo demonstração e a primeira conta criada no navegador vira administradora. Com Supabase, o primeiro admin é definido no banco (veja [`docs/BACKEND.md`](docs/BACKEND.md)).
 
 ## Estrutura
 
 ```
 index.html     telas (login, dashboard, gastos, estudos, aula, quiz, biblioteca, conquistas, admin)
 style.css      estilos, mobile-first
-script.js      lógica: contas, navegação, progresso das aulas, XP, certificado, admin, gastos
-courses.js     conteúdo: cursos, módulos, aulas, quizzes, trilha, artigos, vídeos e glossário
-docs/          documento de escopo e screenshots
+script.js      lógica: navegação, progresso das aulas, XP, certificado, admin, gastos
+backend.js     camada de dados: Supabase (modo nuvem) ou navegador (modo demonstração)
+config.js      URL e chave pública do Supabase; vazio = modo demonstração
+courses.js     conteúdo padrão: cursos, módulos, aulas, quizzes, trilha, artigos, vídeos e glossário
+supabase/      banco (migração SQL com regras de acesso), funções do servidor e testes
+docs/          guia do backend, documento de escopo e screenshots
 ```
 
-O conteúdo fica separado da lógica. Para adicionar ou alterar cursos, use a aba **Admin** ou edite o `courses.js`. O Admin também exporta e importa o conteúdo em JSON.
+O conteúdo fica separado da lógica. Para adicionar ou alterar cursos, use a aba **Admin**: no modo nuvem, o que o admin publica vale na hora para todos os alunos.
+
+## Backend
+
+Com o Supabase configurado, o sistema tem:
+
+- **Contas de verdade:** cadastro, login, confirmação por e-mail e recuperação de senha.
+- **Dados na nuvem:** progresso, XP e gastos acompanham a conta em qualquer aparelho.
+- **Admin completo:** publica cursos para todos, envia vídeos e PDFs, vê o progresso de todos os alunos e promove outros administradores.
+- **Certificado verificável:** emitido pelo servidor depois de conferir o progresso. O QR Code consulta o registro oficial.
+- **Segurança no banco (RLS):** cada aluno só acessa os próprios dados, ninguém se promove a admin e ninguém emite certificado sozinho. As regras são cobertas por 39 testes automatizados.
+- **LGPD:** o aluno exclui a própria conta e todos os dados pelo perfil.
+
+Passo a passo de configuração em [`docs/BACKEND.md`](docs/BACKEND.md).
 
 ## Limitações conhecidas
 
-O projeto é um site estático, sem servidor. Isso significa que:
-
-- Contas, progresso e gastos ficam no `localStorage` de cada navegador.
-- As edições feitas no Admin valem só para aquele navegador. Para publicar para todos, exporte o JSON e substitua os dados do `courses.js`.
-- Vídeos e PDFs entram por link, porque não há upload de arquivos.
-- O código do certificado detecta alterações casuais, mas só um servidor que assine os certificados garante autenticidade de verdade.
-
-Esses são os próximos passos naturais com um backend.
+- A medição dos 95% do vídeo roda no navegador, porque o YouTube não avisa o servidor. Quem manipular os próprios dados pela API consegue marcar aulas como vistas.
+- No modo demonstração (sem Supabase), contas, progresso e certificados ficam só no navegador, e o código do certificado detecta apenas alterações casuais.
+- O plano gratuito do Supabase limita o envio de e-mails e o tamanho dos arquivos (50 MB cada).
 
 ## Créditos
 

@@ -11,9 +11,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./style.css">
 </head>
-<body>
+<body class="is-booting">
 
-<!-- ===== AUTH SCREEN (login / cadastro) ===== -->
+<!-- ===== AUTH SCREEN (entrar / criar conta / recuperar senha) ===== -->
 <div class="auth-screen" id="authScreen">
   <div class="auth-card">
     <div class="brand auth-card__brand">
@@ -26,43 +26,86 @@
       <span class="brand__name">Raisin<span class="brand__accent">Finance</span></span>
     </div>
 
-    <h1 class="auth-card__title" id="authTitle">Entrar ou criar conta</h1>
-    <p class="auth-card__subtitle" id="authSubtitle">Informe seu e-mail para continuar.</p>
+    <div class="auth-tabs" role="tablist" aria-label="Acesso">
+      <button type="button" class="auth-tabs__tab is-active" role="tab" aria-selected="true" data-auth-view="login">Entrar</button>
+      <button type="button" class="auth-tabs__tab" role="tab" aria-selected="false" data-auth-view="register">Criar conta</button>
+    </div>
 
-    <form class="auth-form" id="authEmailForm" novalidate>
+    <h1 class="auth-card__title" id="authTitle">Bem-vindo de volta</h1>
+    <p class="auth-card__subtitle" id="authSubtitle">Acesse sua conta para continuar de onde parou.</p>
+    <p class="auth-notice" id="authNotice" role="status" hidden></p>
+
+    <form class="auth-form" id="authLoginForm" novalidate>
       <div class="field">
-        <label for="authEmail">E-mail</label>
-        <input type="email" id="authEmail" required autocomplete="email" placeholder="voce@email.com">
-        <span class="field__error" id="authEmailError" role="alert"></span>
-      </div>
-      <button type="submit" class="btn btn--primary btn--block" id="authEmailBtn">
-        <span class="btn__label">Continuar</span>
-        <span class="btn__spinner" aria-hidden="true"></span>
-      </button>
-    </form>
-
-    <form class="auth-form" id="authDetailsForm" novalidate hidden>
-      <button type="button" class="text-link auth-form__back" id="authBackBtn">← usar outro e-mail</button>
-      <div class="field" id="authNameField" hidden>
-        <label for="authName">Nome</label>
-        <input type="text" id="authName" autocomplete="name" placeholder="Seu nome">
-        <span class="field__error" id="authNameError" role="alert"></span>
+        <label for="loginEmail">E-mail</label>
+        <input type="email" id="loginEmail" required autocomplete="email" placeholder="voce@email.com">
       </div>
       <div class="field">
-        <label for="authPassword">Senha</label>
-        <input type="password" id="authPassword" autocomplete="current-password" placeholder="••••••••">
-        <span class="field__error" id="authPasswordError" role="alert"></span>
+        <label for="loginPassword">Senha</label>
+        <input type="password" id="loginPassword" required autocomplete="current-password" placeholder="••••••••">
       </div>
-      <div class="field" id="authConfirmField" hidden>
-        <label for="authConfirmPassword">Confirmar senha</label>
-        <input type="password" id="authConfirmPassword" autocomplete="new-password" placeholder="••••••••">
-        <span class="field__error" id="authConfirmPasswordError" role="alert"></span>
-      </div>
-      <button type="submit" class="btn btn--primary btn--block" id="authSubmitBtn">
+      <p class="auth-form__error" role="alert" hidden></p>
+      <button type="submit" class="btn btn--primary btn--block">
         <span class="btn__label">Entrar</span>
         <span class="btn__spinner" aria-hidden="true"></span>
       </button>
+      <button type="button" class="text-link auth-form__link" data-auth-view="forgot">Esqueci minha senha</button>
     </form>
+
+    <form class="auth-form" id="authRegisterForm" novalidate hidden>
+      <div class="field">
+        <label for="regName">Nome</label>
+        <input type="text" id="regName" required autocomplete="name" placeholder="Seu nome" maxlength="120">
+      </div>
+      <div class="field">
+        <label for="regEmail">E-mail</label>
+        <input type="email" id="regEmail" required autocomplete="email" placeholder="voce@email.com">
+      </div>
+      <div class="field">
+        <label for="regPassword">Senha</label>
+        <input type="password" id="regPassword" required autocomplete="new-password" placeholder="Mínimo de 6 caracteres">
+      </div>
+      <div class="field">
+        <label for="regConfirm">Confirmar senha</label>
+        <input type="password" id="regConfirm" required autocomplete="new-password" placeholder="••••••••">
+      </div>
+      <p class="auth-form__error" role="alert" hidden></p>
+      <button type="submit" class="btn btn--primary btn--block">
+        <span class="btn__label">Criar conta</span>
+        <span class="btn__spinner" aria-hidden="true"></span>
+      </button>
+    </form>
+
+    <form class="auth-form" id="authForgotForm" novalidate hidden>
+      <div class="field">
+        <label for="forgotEmail">E-mail da conta</label>
+        <input type="email" id="forgotEmail" required autocomplete="email" placeholder="voce@email.com">
+      </div>
+      <p class="auth-form__error" role="alert" hidden></p>
+      <button type="submit" class="btn btn--primary btn--block">
+        <span class="btn__label">Enviar link</span>
+        <span class="btn__spinner" aria-hidden="true"></span>
+      </button>
+      <button type="button" class="text-link auth-form__link" data-auth-view="login">← Voltar para o login</button>
+    </form>
+
+    <form class="auth-form" id="authRecoveryForm" novalidate hidden>
+      <div class="field">
+        <label for="newPassword">Nova senha</label>
+        <input type="password" id="newPassword" required autocomplete="new-password" placeholder="Mínimo de 6 caracteres">
+      </div>
+      <div class="field">
+        <label for="newPasswordConfirm">Confirmar nova senha</label>
+        <input type="password" id="newPasswordConfirm" required autocomplete="new-password" placeholder="••••••••">
+      </div>
+      <p class="auth-form__error" role="alert" hidden></p>
+      <button type="submit" class="btn btn--primary btn--block">
+        <span class="btn__label">Salvar nova senha</span>
+        <span class="btn__spinner" aria-hidden="true"></span>
+      </button>
+    </form>
+
+    <p class="auth-mode" id="authModeNote" hidden></p>
   </div>
 </div>
 
@@ -382,6 +425,11 @@
         <span class="btn__spinner" aria-hidden="true"></span>
       </button>
       <button type="button" class="btn btn--ghost btn--block" id="logoutBtn">Sair da conta</button>
+      <p class="profile-note" id="profileStorageNote"></p>
+      <button type="button" class="text-link profile-danger" id="deleteAccountBtn">
+        <span class="btn__label">Excluir minha conta</span>
+        <span class="btn__spinner" aria-hidden="true"></span>
+      </button>
     </form>
   </div>
 </div>
@@ -403,7 +451,9 @@
   </div>
 </div>
 
+<script src="config.js"></script>
 <script src="courses.js"></script>
+<script src="backend.js"></script>
 <script src="script.js"></script>
 </body>
 </html>

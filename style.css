@@ -1416,3 +1416,75 @@ input[type="date"] { min-width: 0; max-width: 100%; display: block; }
 /* Quiz result actions share the row evenly and stack full-width when narrow. */
 .quiz-result__actions { width: 100%; max-width: 380px; }
 .quiz-result__actions .btn { flex: 1 1 150px; }
+
+/* ==========================================================================
+   BACKEND UI — login tabs, notices, account and admin details
+   ========================================================================== */
+/* Nothing flashes while the session is being restored. */
+.is-booting #authScreen,
+.is-booting #appShell { visibility: hidden; }
+
+.auth-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 18px;
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.auth-tabs__tab {
+  min-height: 40px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 700;
+  font-size: 14px;
+}
+.auth-tabs__tab.is-active { background: var(--white); color: var(--navy-800); box-shadow: 0 1px 2px rgba(11,37,69,0.12); }
+
+.auth-notice {
+  margin: -8px 0 16px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-teal-soft);
+  color: #13644A;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.auth-form__error {
+  margin: -4px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-red-soft);
+  color: var(--accent-red);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.auth-form__link { align-self: center; text-decoration: none; font-size: 13.5px; }
+.auth-mode {
+  margin-top: 16px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.45;
+}
+
+.profile-note { margin-top: 4px; font-size: 12px; color: var(--text-secondary); text-align: center; line-height: 1.45; }
+.profile-danger {
+  align-self: center;
+  color: var(--accent-red);
+  font-size: 13px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.profile-danger .btn__spinner { border-color: rgba(199,67,79,0.3); border-top-color: var(--accent-red); }
+.profile-danger.is-loading .btn__spinner { display: inline-block; animation: spin 0.7s linear infinite; }
+
+.admin-note--ok { background: var(--accent-teal-soft); color: #13644A; }
+.adm-uploads { display: flex; flex-wrap: wrap; gap: 8px; margin-top: -4px; }

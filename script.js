@@ -5,14 +5,10 @@
    library, certificates), admin area, expense tracker and achievements.
 
    PERSISTENCE NOTE:
-   Accounts are stored in localStorage under 'raisin-finance-users' (name,
-   email, role, salted SHA-256 password hash). Each user's app data is stored
-   separately under 'raisin-finance-state-<email>'. Course content comes from
-   courses.js (window.RAISIN_CONTENT) unless an admin saved an edited copy
-   under 'raisin-finance-content'. This is a client-side-only app: there is
-   no server, so auth, admin permissions and certificate codes are
-   "reasonable for a static site", not production-grade. A backend is
-   required for real multi-user admin, uploads and tamper-proof certificates.
+   All accounts, progress, content and certificates go through window.Backend
+   (backend.js): Supabase when config.js is filled in, or this browser's
+   localStorage in demo mode. Course content defaults to courses.js
+   (window.RAISIN_CONTENT) until an admin saves an edited copy.
    ========================================================================== */
 
 (function () {
@@ -47,81 +43,32 @@
   ];
 
   const WATCH_THRESHOLD = 0.95; // share of the video that must really be watched
-  const CERT_SALT = 'raisin-cert-v1';
   const QR_LIB = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
 
   /* ------------------------------------------------------------------ *
    * 2. STATE & STORAGE
    * ------------------------------------------------------------------ */
-  let AppState = null; // set on login; shape from defaultState()
-  let CONTENT = null;  // courses, trail, library
-  let IDX = null;      // lookup tables built from CONTENT
+  const Backend = window.Backend;
 
-  const USERS_KEY = 'raisin-finance-users';
-  const SESSION_KEY = 'raisin-finance-session';
-  const STATE_PREFIX = 'raisin-finance-state-';
-  const CONTENT_KEY = 'raisin-finance-content';
-
-  function readJSON(key, fallback) {
-    try {
-      const raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : fallback;
-    } catch (e) {
-      console.warn('Could not read', key, e);
-      return fallback;
-    }
-  }
-
-  function writeJSON(key, value) {
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-      return true;
-    } catch (e) {
-      console.warn('Could not write', key, e);
-      return false;
-    }
-  }
+  let AppState = null;    // set on login; shape from Backend.loadState()
+  let currentUser = null; // { id, email, name, role }
+  let CONTENT = null;     // courses, trail, library
+  let IDX = null;         // lookup tables built from CONTENT
 
   function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
-
-  function getUsers() { return readJSON(USERS_KEY, {}); }
-  function saveUsers(users) { writeJSON(USERS_KEY, users); }
-
-  function getSessionEmail() { return localStorage.getItem(SESSION_KEY) || null; }
-  function setSessionEmail(email) {
-    if (email) localStorage.setItem(SESSION_KEY, email);
-    else localStorage.removeItem(SESSION_KEY);
-  }
-
-  function defaultState(name, email) {
-    return {
-      userName: name,
-      email: email,
-      expenses: [],
-      budgetGoal: 2000,
-      savingsGoal: 500,
-      study: defaultStudy(),
-      lastView: 'home',
-      activeCourseId: null,
-      activeLessonId: null,
-      activeModuleId: null
-    };
-  }
 
   function defaultStudy() {
     // lessons: { [lessonId]: { ranges: [[a,b]], duration, lastTime, completed, completedDate } }
     // quizzes: { [moduleId]: { best, last, total, attempts, date } }
-    // courses: { [courseId]: { completedDate } }
+    // courses: { [courseId]: { completedDate, cert? } }
     // xp:      { [awardKey]: amount }
     return { lessons: {}, quizzes: {}, courses: {}, xp: {}, last: null };
   }
 
-  function loadStateForUser(email) { return readJSON(STATE_PREFIX + email, null); }
-  function saveStateForUser(email, state) { writeJSON(STATE_PREFIX + email, state); }
-
+  // Local mode writes immediately; cloud mode debounces inside the backend.
   function save() {
     if (!AppState || !AppState.email) return;
-    saveStateForUser(AppState.email, AppState);
+    Backend.saveState(AppState);
   }
 
   function study() {
@@ -130,14 +77,38 @@
   }
 
   /* ------------------------------------------------------------------ *
-   * 3. CONTENT (courses.js + admin overrides)
+   * 3. CONTENT (courses.js default + admin-saved copy from the backend)
    * ------------------------------------------------------------------ */
-  function loadContent() {
-    const saved = readJSON(CONTENT_KEY, null);
-    CONTENT = saved && Array.isArray(saved.courses) ? saved : clone(window.RAISIN_CONTENT);
+  function setContent(content) {
+    CONTENT = content && Array.isArray(content.courses) ? content : clone(window.RAISIN_CONTENT);
     if (!CONTENT.library) CONTENT.library = { articles: [], videos: [], glossary: [] };
     if (!CONTENT.trail) CONTENT.trail = [];
     buildIndex();
+  }
+
+  async function loadContent() {
+    let saved = null;
+    try {
+      saved = await Backend.loadContent();
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
+    setContent(saved);
+  }
+
+  // First admin login in cloud mode: publish the default courses so every
+  // student (and the certificate function) reads the same content.
+  async function seedContentIfEmpty() {
+    if (!Backend.isCloud || !isAdmin()) return;
+    let saved = null;
+    try { saved = await Backend.loadContent(); } catch (e) { return; }
+    if (saved) return;
+    try {
+      await Backend.saveContent(clone(window.RAISIN_CONTENT));
+      showToast('Cursos padrão publicados no banco de dados.', 'success');
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
   }
 
   function buildIndex() {
@@ -156,27 +127,6 @@
       IDX.flat[course.id] = flat;
     });
   }
-
-  /* ------------------------------------------------------------------ *
-   * 4. HASHING (best-effort client-side, no backend available)
-   * ------------------------------------------------------------------ */
-  async function sha256Hex(str) {
-    if (window.crypto && window.crypto.subtle) {
-      const data = new TextEncoder().encode(str);
-      const digest = await window.crypto.subtle.digest('SHA-256', data);
-      return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
-    }
-    // Fallback for contexts without SubtleCrypto (e.g. non-secure origins).
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
-    }
-    return (hash >>> 0).toString(16).padStart(8, '0').repeat(8);
-  }
-
-  function hashPassword(password, salt) { return sha256Hex(salt + ':' + password); }
-
-  function randomSalt() { return uid('s'); }
 
   /* ------------------------------------------------------------------ *
    * 5. UTILITIES
@@ -351,142 +301,163 @@
   }
 
   /* ------------------------------------------------------------------ *
-   * 7. AUTH (login / cadastro / sessão / papéis)
+   * 7. AUTH (entrar / criar conta / recuperar senha / sessão / papéis)
    * ------------------------------------------------------------------ */
-  let authMode = 'login';
-  let authEmailChecked = null;
+  const AUTH_VIEWS = {
+    login: { form: '#authLoginForm', title: 'Bem-vindo de volta', subtitle: 'Acesse sua conta para continuar de onde parou.' },
+    register: { form: '#authRegisterForm', title: 'Criar sua conta', subtitle: 'Leva menos de um minuto e é gratuito.' },
+    forgot: { form: '#authForgotForm', title: 'Recuperar senha', subtitle: 'Enviamos um link para você criar uma nova senha.' },
+    recovery: { form: '#authRecoveryForm', title: 'Criar nova senha', subtitle: 'Escolha uma senha nova para sua conta.' }
+  };
 
   function initAuth() {
-    $('#authEmailForm').addEventListener('submit', onAuthEmailSubmit);
-    $('#authDetailsForm').addEventListener('submit', onAuthDetailsSubmit);
-    $('#authBackBtn').addEventListener('click', resetAuthToEmailStep);
+    $$('[data-auth-view]').forEach((btn) => btn.addEventListener('click', () => showAuthView(btn.dataset.authView)));
+    $('#authLoginForm').addEventListener('submit', onLoginSubmit);
+    $('#authRegisterForm').addEventListener('submit', onRegisterSubmit);
+    $('#authForgotForm').addEventListener('submit', onForgotSubmit);
+    $('#authRecoveryForm').addEventListener('submit', onRecoverySubmit);
+    $('#authModeNote').textContent = Backend.isCloud
+      ? ''
+      : 'Modo demonstração: contas e progresso ficam salvos só neste navegador.';
+    $('#authModeNote').hidden = Backend.isCloud;
+    // Link from the "reset password" e-mail lands here with a recovery session.
+    Backend.onPasswordRecovery(() => {
+      $('#appShell').hidden = true;
+      $('#authScreen').hidden = false;
+      showAuthView('recovery');
+    });
   }
 
-  function clearAuthErrors() {
-    ['authEmail', 'authName', 'authPassword', 'authConfirmPassword'].forEach(clearFieldError);
+  function showAuthView(view, notice) {
+    const conf = AUTH_VIEWS[view] || AUTH_VIEWS.login;
+    Object.entries(AUTH_VIEWS).forEach(([key, v]) => {
+      const form = $(v.form);
+      form.hidden = key !== view;
+      const err = $('.auth-form__error', form);
+      if (err) { err.textContent = ''; err.hidden = true; }
+    });
+    $$('.auth-tabs [data-auth-view]').forEach((tab) => {
+      const active = tab.dataset.authView === view;
+      tab.classList.toggle('is-active', active);
+      tab.setAttribute('aria-selected', String(active));
+    });
+    $('.auth-tabs').hidden = view === 'forgot' || view === 'recovery';
+    $('#authTitle').textContent = conf.title;
+    $('#authSubtitle').textContent = conf.subtitle;
+    const box = $('#authNotice');
+    box.textContent = notice || '';
+    box.hidden = !notice;
+    const first = $(`${conf.form} input`);
+    if (first && !('ontouchstart' in window)) first.focus();
   }
 
-  function onAuthEmailSubmit(evt) {
+  function authError(form, message) {
+    const el = $('.auth-form__error', form);
+    el.textContent = message;
+    el.hidden = false;
+  }
+
+  async function busy(btn, fn) {
+    btn.classList.add('is-loading');
+    btn.disabled = true;
+    try { return await fn(); } finally { btn.classList.remove('is-loading'); btn.disabled = false; }
+  }
+
+  async function onLoginSubmit(evt) {
     evt.preventDefault();
-    clearAuthErrors();
-    const email = $('#authEmail').value.trim().toLowerCase();
-    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
-      setFieldError('authEmail', 'Informe um e-mail válido.');
-      return;
+    const form = evt.currentTarget;
+    try {
+      const user = await busy($('button[type="submit"]', form), () => Backend.signIn($('#loginEmail').value, $('#loginPassword').value));
+      form.reset();
+      await completeLogin(user, false);
+    } catch (e) {
+      authError(form, e.message);
     }
-
-    authEmailChecked = email;
-    const exists = !!getUsers()[email];
-    authMode = exists ? 'login' : 'register';
-
-    $('#authEmailForm').hidden = true;
-    $('#authDetailsForm').hidden = false;
-    $('#authNameField').hidden = exists;
-    $('#authConfirmField').hidden = exists;
-    $('#authName').required = !exists;
-    $('#authConfirmPassword').required = !exists;
-    $('#authPassword').setAttribute('autocomplete', exists ? 'current-password' : 'new-password');
-    $('#authTitle').textContent = exists ? 'Bem-vindo de volta' : 'Criar sua conta';
-    $('#authSubtitle').textContent = exists
-      ? `Digite a senha da conta ${email}.`
-      : `Vamos criar sua conta com o e-mail ${email}.`;
-    $('#authSubmitBtn .btn__label').textContent = exists ? 'Entrar' : 'Criar conta';
-    $('#authPassword').value = '';
-    $('#authName').value = '';
-    $('#authConfirmPassword').value = '';
-    $('#authPassword').focus();
   }
 
-  function resetAuthToEmailStep() {
-    clearAuthErrors();
-    $('#authDetailsForm').hidden = true;
-    $('#authEmailForm').hidden = false;
-    $('#authEmail').focus();
-  }
-
-  async function onAuthDetailsSubmit(evt) {
+  async function onRegisterSubmit(evt) {
     evt.preventDefault();
-    clearAuthErrors();
-    const email = authEmailChecked;
-    const password = $('#authPassword').value;
-    const btn = $('#authSubmitBtn');
-
-    if (!password || password.length < 4) {
-      setFieldError('authPassword', 'A senha deve ter ao menos 4 caracteres.');
-      return;
-    }
-
-    const users = getUsers();
-
-    if (authMode === 'login') {
-      const user = users[email];
-      if (!user) { setFieldError('authPassword', 'Conta não encontrada.'); return; }
-      btn.classList.add('is-loading'); btn.disabled = true;
-      const hash = await hashPassword(password, user.salt);
-      btn.classList.remove('is-loading'); btn.disabled = false;
-      if (hash !== user.passwordHash) {
-        setFieldError('authPassword', 'Senha incorreta.');
+    const form = evt.currentTarget;
+    const password = $('#regPassword').value;
+    if (password !== $('#regConfirm').value) { authError(form, 'As senhas não coincidem.'); return; }
+    try {
+      const result = await busy($('button[type="submit"]', form), () => Backend.signUp($('#regName').value, $('#regEmail').value, password));
+      form.reset();
+      if (result.pendingConfirmation) {
+        $('#loginEmail').value = result.email;
+        showAuthView('login', `Enviamos um link de confirmação para ${result.email}. Abra o e-mail, confirme e depois entre aqui.`);
         return;
       }
-      completeLogin(email, user.name);
-    } else {
-      const name = $('#authName').value.trim();
-      const confirm = $('#authConfirmPassword').value;
-      let valid = true;
-      if (!name) { setFieldError('authName', 'Informe seu nome.'); valid = false; }
-      if (password !== confirm) { setFieldError('authConfirmPassword', 'As senhas não coincidem.'); valid = false; }
-      if (!valid) return;
-
-      btn.classList.add('is-loading'); btn.disabled = true;
-      const salt = randomSalt();
-      const hash = await hashPassword(password, salt);
-      btn.classList.remove('is-loading'); btn.disabled = false;
-
-      users[email] = { name, email, role: 'student', salt, passwordHash: hash, createdAt: new Date().toISOString() };
-      saveUsers(users);
-      saveStateForUser(email, defaultState(name, email));
-      completeLogin(email, name);
+      await completeLogin(result.user, true);
+    } catch (e) {
+      authError(form, e.message);
     }
   }
 
-  // Local prototype rule: while no admin exists in this browser, the first
-  // account that logs in becomes admin. Admins can promote other accounts.
-  function ensureAdminExists(email) {
-    const users = getUsers();
-    const hasAdmin = Object.values(users).some((u) => u.role === 'admin');
-    if (!hasAdmin && users[email]) {
-      users[email].role = 'admin';
-      saveUsers(users);
-      return true;
+  async function onForgotSubmit(evt) {
+    evt.preventDefault();
+    const form = evt.currentTarget;
+    const email = $('#forgotEmail').value;
+    try {
+      await busy($('button[type="submit"]', form), () => Backend.resetPassword(email));
+      form.reset();
+      showAuthView('login', `Se existir uma conta com ${email.trim()}, você vai receber um link para criar uma nova senha.`);
+    } catch (e) {
+      authError(form, e.message);
     }
-    return false;
+  }
+
+  async function onRecoverySubmit(evt) {
+    evt.preventDefault();
+    const form = evt.currentTarget;
+    const password = $('#newPassword').value;
+    if (password !== $('#newPasswordConfirm').value) { authError(form, 'As senhas não coincidem.'); return; }
+    try {
+      await busy($('button[type="submit"]', form), () => Backend.setNewPassword(password));
+      form.reset();
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+      const user = await Backend.currentUser();
+      if (user) {
+        await completeLogin(user, false);
+        showToast('Senha alterada.', 'success');
+      } else {
+        showAuthView('login', 'Senha alterada. Entre com a nova senha.');
+      }
+    } catch (e) {
+      authError(form, e.message);
+    }
   }
 
   function isAdmin() {
-    if (!AppState) return false;
-    const user = getUsers()[AppState.email];
-    return !!user && user.role === 'admin';
+    return !!currentUser && currentUser.role === 'admin';
   }
 
-  function completeLogin(email, name) {
-    setSessionEmail(email);
-    AppState = loadStateForUser(email) || defaultState(name, email);
+  async function completeLogin(user, isNewAccount) {
+    currentUser = user;
+    try {
+      AppState = await Backend.loadState(user);
+    } catch (e) {
+      showToast(e.message, 'error');
+      await Backend.signOut().catch(() => {});
+      currentUser = null;
+      showAuthScreen();
+      return;
+    }
     study();
     selectedCategory = null;
-    save();
-    const promoted = ensureAdminExists(email);
+    await seedContentIfEmpty();
     showAppShell();
     restoreSession();
-    showToast(`Bem-vindo, ${name.split(' ')[0]}!`, 'success');
-    if (promoted) showToast('Você é o administrador deste navegador.', 'default');
+    const first = (user.name || '').split(' ')[0];
+    showToast(isNewAccount ? `Conta criada. Bem-vindo, ${first}!` : `Bem-vindo, ${first}!`, 'success');
+    if (Backend.promotedToAdmin) showToast('Você é o administrador deste navegador.', 'default');
   }
 
   function showAuthScreen() {
     $('#appShell').hidden = true;
     $('#authScreen').hidden = false;
     $('#profileToggle').hidden = true;
-    $('#authEmailForm').reset();
-    resetAuthToEmailStep();
+    showAuthView('login');
   }
 
   function showAppShell() {
@@ -502,15 +473,16 @@
     document.body.classList.toggle('has-admin', admin);
   }
 
-  function logout() {
-    setSessionEmail(null);
+  async function logout(message) {
     stopVideoTracking();
+    await Backend.signOut().catch(() => {});
     AppState = null;
+    currentUser = null;
     adminDraft = null;
     adminDirty = false;
     $('#profileModalOverlay').hidden = true;
     showAuthScreen();
-    showToast('Você saiu da conta.', 'default');
+    showToast(message || 'Você saiu da conta.', 'default');
   }
 
   function restoreSession() {
@@ -1768,50 +1740,50 @@
 
   /* ------------------------------------------------------------------ *
    * 21. CERTIFICATE (code + QR + verification page)
-   * The code is a hash of name|course|date. The verification page checks
-   * that the data in the link matches the code. Without a server this only
-   * detects casual edits — anyone who reads this source can mint a valid
-   * code. A backend that signs certificates is required for real authenticity.
+   * Cloud mode: the issue-certificate function checks the progress on the
+   * server and stores the certificate; the QR link carries only the code.
+   * Demo mode: the code is a hash of the printed data (see backend.js).
    * ------------------------------------------------------------------ */
-  async function certCode(name, courseId, date) {
-    const hex = (await sha256Hex(`${name}|${courseId}|${date}|${CERT_SALT}`)).toUpperCase();
-    return `RF-${hex.slice(0, 5)}-${hex.slice(5, 10)}`;
+  function hoursLabel(hours) {
+    if (typeof hours === 'string') return hours;
+    const h = Math.max(1, Number(hours) || 1);
+    return `${h} hora${h > 1 ? 's' : ''}`;
   }
 
-  function b64urlEncode(str) {
-    const bytes = new TextEncoder().encode(str);
-    let bin = '';
-    bytes.forEach((b) => { bin += String.fromCharCode(b); });
-    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  }
-
-  function b64urlDecode(str) {
-    const bin = atob(str.replace(/-/g, '+').replace(/_/g, '/'));
-    const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
-    return new TextDecoder().decode(bytes);
-  }
-
-  function verifyUrl(payload) {
-    return window.location.href.split('#')[0] + '#verificar/' + b64urlEncode(JSON.stringify(payload));
+  async function getCertificate(course) {
+    const record = study().courses[course.id];
+    if (!record) return null;
+    if (record.cert && record.cert.code) return record.cert;
+    const cert = await Backend.issueCertificate(course.id, {
+      studentName: AppState.userName,
+      courseTitle: course.title,
+      hours: Math.max(1, Math.round(courseMinutes(course) / 60)),
+      completedOn: record.completedDate
+    });
+    record.cert = cert;
+    save();
+    return cert;
   }
 
   async function openCertificate(course) {
-    if (!course) return;
-    const record = study().courses[course.id];
-    if (!record) return;
-    const name = AppState.userName;
-    const date = record.completedDate;
-    const hours = formatHours(courseMinutes(course));
-    const code = await certCode(name, course.id, date);
+    if (!course || !study().courses[course.id]) return;
+    let cert;
+    try {
+      cert = await getCertificate(course);
+    } catch (e) {
+      showToast(e.message, 'error');
+      return;
+    }
+    if (!cert) return;
 
-    $('#certUserName').textContent = name;
-    $('#certCourseName').textContent = course.title;
-    $('#certHours').textContent = `com carga horária de ${hours}`;
-    $('#certDate').textContent = `Concluído em ${formatDate(date)}`;
-    $('#certCode').textContent = code;
+    $('#certUserName').textContent = cert.studentName;
+    $('#certCourseName').textContent = cert.courseTitle;
+    $('#certHours').textContent = `com carga horária de ${hoursLabel(cert.hours)}`;
+    $('#certDate').textContent = `Concluído em ${formatDate(cert.completedOn)}`;
+    $('#certCode').textContent = cert.code;
     $('#certModalOverlay').hidden = false;
 
-    const url = verifyUrl({ n: name, c: course.id, t: course.title, h: hours, d: date, k: code });
+    const url = Backend.verifyUrl(cert, course.id);
     $('#certVerifyLink').href = url;
     const qrBox = $('#certQr');
     qrBox.innerHTML = '';
@@ -1834,33 +1806,31 @@
     $('#certPrintBtn').addEventListener('click', () => window.print());
   }
 
-  async function showVerifyScreen(encoded) {
+  async function showVerifyScreen(token) {
     $('#authScreen').hidden = true;
     $('#appShell').hidden = true;
     const screen = $('#verifyScreen');
     screen.hidden = false;
-    let data = null;
-    try { data = JSON.parse(b64urlDecode(encoded)); } catch (e) { data = null; }
+    $('#verifyBody').innerHTML = '<p class="auth-card__subtitle">Verificando certificado…</p>';
 
-    let ok = false;
-    if (data && data.n && data.c && data.d && data.k) {
-      ok = (await certCode(String(data.n), String(data.c), String(data.d))) === data.k;
-    }
-    const course = ok && IDX.courses[data.c];
-    $('#verifyBody').innerHTML = ok ? `
+    let cert = null;
+    let failure = null;
+    try { cert = await Backend.verifyCertificate(token); } catch (e) { failure = e.message; }
+
+    $('#verifyBody').innerHTML = cert ? `
       <span class="verify__status is-ok">${icon('checkCircle', 30)}</span>
-      <h1 class="auth-card__title">Certificado confere</h1>
-      <p class="auth-card__subtitle">O código corresponde aos dados deste certificado.</p>
+      <h1 class="auth-card__title">Certificado autêntico</h1>
+      <p class="auth-card__subtitle">${Backend.isCloud ? 'Este certificado foi emitido pela Raisin Finance e consta no nosso registro.' : 'O código corresponde aos dados deste certificado.'}</p>
       <dl class="verify__data">
-        <div><dt>Aluno</dt><dd>${esc(data.n)}</dd></div>
-        <div><dt>Curso</dt><dd>${esc(course ? course.title : data.t)}</dd></div>
-        <div><dt>Carga horária</dt><dd>${esc(data.h || '—')}</dd></div>
-        <div><dt>Conclusão</dt><dd>${esc(formatDate(String(data.d)))}</dd></div>
-        <div><dt>Código</dt><dd class="ledger">${esc(data.k)}</dd></div>
+        <div><dt>Aluno</dt><dd>${esc(cert.studentName)}</dd></div>
+        <div><dt>Curso</dt><dd>${esc(cert.courseTitle)}</dd></div>
+        <div><dt>Carga horária</dt><dd>${esc(hoursLabel(cert.hours))}</dd></div>
+        <div><dt>Conclusão</dt><dd>${esc(formatDate(String(cert.completedOn)))}</dd></div>
+        <div><dt>Código</dt><dd class="ledger">${esc(cert.code)}</dd></div>
       </dl>` : `
       <span class="verify__status is-bad">${icon('alertCircle', 30)}</span>
-      <h1 class="auth-card__title">Não foi possível validar</h1>
-      <p class="auth-card__subtitle">Os dados deste link não correspondem a um certificado emitido pela Raisin Finance.</p>`;
+      <h1 class="auth-card__title">${failure ? 'Não foi possível verificar agora' : 'Certificado não encontrado'}</h1>
+      <p class="auth-card__subtitle">${esc(failure || 'Não existe certificado emitido pela Raisin Finance com esse código.')}</p>`;
     $('#verifyHomeBtn').onclick = () => {
       history.replaceState(null, '', window.location.pathname + window.location.search);
       screen.hidden = true;
@@ -1869,9 +1839,10 @@
   }
 
   /* ------------------------------------------------------------------ *
-   * 22. ADMIN (local prototype)
-   * Edits a draft copy of CONTENT; "Salvar" stores it in this browser.
-   * Student metrics read the accounts stored in this same browser.
+   * 22. ADMIN
+   * Edits a draft copy of CONTENT; "Salvar" publishes it through the
+   * backend (for everyone in cloud mode, this browser only in demo mode).
+   * Student metrics come from the backend (admin_students RPC in the cloud).
    * ------------------------------------------------------------------ */
   let adminDraft = null;
   let adminDirty = false;
@@ -1879,12 +1850,18 @@
   let adminCourseIdx = 0;
   const adminOpen = { lesson: null, quiz: null };
 
+  function adminNoteHTML() {
+    return Backend.isCloud
+      ? `<div class="admin-note admin-note--ok">${icon('checkCircle', 16)}<span>Conectado ao banco de dados. O que você publicar aqui vale na hora para todos os alunos, e vídeos e PDFs enviados ficam hospedados no Supabase (até 50 MB por arquivo).</span></div>`
+      : `<div class="admin-note">${icon('infoCircle', 16)}<span>Modo demonstração: as alterações ficam salvas só neste navegador e os alunos listados são as contas criadas aqui. Com o Supabase configurado (veja <code>docs/BACKEND.md</code>), tudo passa a valer para todos.</span></div>`;
+  }
+
   function renderAdmin() {
     if (!isAdmin()) { goTo('home'); return; }
     if (!adminDraft) adminDraft = clone(CONTENT);
     const tabs = [['overview', 'Alunos e métricas'], ['content', 'Cursos e aulas'], ['data', 'Importar / exportar']];
     let content = '';
-    if (adminTab === 'overview') content = adminOverviewHTML();
+    if (adminTab === 'overview') content = '<div id="adminOverview"><p class="muted">Carregando alunos…</p></div>';
     else if (adminTab === 'content') content = adminContentHTML();
     else content = adminDataHTML();
 
@@ -1894,22 +1871,34 @@
         <h1 class="page-head__title">Admin</h1>
         <p class="page-head__subtitle">Gerencie cursos, módulos, aulas e questionários e acompanhe os alunos.</p>
       </div>
-      <div class="admin-note">${icon('infoCircle', 16)}<span>Protótipo local: tudo fica salvo neste navegador. Para publicar para todos os usuários, exporte o JSON e substitua o conteúdo do <code>courses.js</code>, ou conecte um backend. Upload direto de vídeos e PDFs também depende de servidor; por enquanto, hospede o arquivo e cole o link.</span></div>
+      ${adminNoteHTML()}
       <div class="filter-row">${tabs.map(([id, label]) => `<button class="chip${adminTab === id ? ' is-active' : ''}" data-act="tab" data-tab-id="${id}">${label}</button>`).join('')}</div>
       ${content}
       ${adminTab === 'content' ? `
       <div class="admin-savebar${adminDirty ? ' is-dirty' : ''}" id="adminSaveBar">
         <span id="adminSaveStatus">${adminDirty ? 'Alterações não salvas' : 'Tudo salvo'}</span>
         <button class="btn btn--ghost btn--sm" data-act="discard">Descartar</button>
-        <button class="btn btn--primary btn--sm" data-act="save">Salvar alterações</button>
+        <button class="btn btn--primary btn--sm" data-act="save">${Backend.isCloud ? 'Publicar alterações' : 'Salvar alterações'}</button>
       </div>` : ''}`;
+    if (adminTab === 'overview') loadAdminOverview();
   }
 
-  function adminStudents() {
-    const users = getUsers();
-    return Object.values(users).map((u) => {
-      const st = AppState && u.email === AppState.email ? AppState : loadStateForUser(u.email);
-      const s = (st && st.study) || defaultStudy();
+  async function loadAdminOverview() {
+    let rows;
+    try {
+      rows = await Backend.listStudents();
+    } catch (e) {
+      const box = $('#adminOverview');
+      if (box) box.innerHTML = `<p class="empty-state is-visible">${esc(e.message)}</p>`;
+      return;
+    }
+    const box = $('#adminOverview');
+    if (box && currentView === 'admin' && adminTab === 'overview') box.innerHTML = adminOverviewHTML(summarizeStudents(rows));
+  }
+
+  function summarizeStudents(rows) {
+    return rows.map((u) => {
+      const s = u.id === currentUser.id ? study() : Object.assign(defaultStudy(), u.study || {});
       const perCourse = {};
       CONTENT.courses.forEach((c) => {
         const flat = IDX.flat[c.id];
@@ -1918,7 +1907,7 @@
         perCourse[c.id] = { pct: flat.length ? Math.round((done / flat.length) * 100) : 0, started, completed: !!s.courses[c.id] };
       });
       return {
-        name: u.name, email: u.email, role: u.role || 'student',
+        id: u.id, name: u.name, email: u.email, role: u.role || 'student',
         xp: xpTotal(s), perCourse,
         quizzes: Object.keys(s.quizzes || {}).length,
         certs: Object.keys(s.courses || {}).filter((id) => IDX.courses[id]).length
@@ -1926,8 +1915,7 @@
     });
   }
 
-  function adminOverviewHTML() {
-    const students = adminStudents();
+  function adminOverviewHTML(students) {
     const active = students.filter((s) => Object.values(s.perCourse).some((p) => p.started)).length;
     const certs = students.reduce((sum, s) => sum + s.certs, 0);
     const avgXp = students.length ? Math.round(students.reduce((sum, s) => sum + s.xp, 0) / students.length) : 0;
@@ -1945,9 +1933,9 @@
         <td class="ledger">${s.xp} XP<br><span class="muted">Nível ${levelInfo(s.xp).number}</span></td>
         ${CONTENT.courses.map((c) => `<td class="ledger">${s.perCourse[c.id].pct}%</td>`).join('')}
         <td class="ledger">${s.quizzes}</td>
-        <td>${s.email === AppState.email
+        <td>${s.id === currentUser.id
           ? '<span class="role-tag">admin (você)</span>'
-          : `<button class="btn btn--ghost btn--sm" data-act="role" data-email="${esc(s.email)}">${s.role === 'admin' ? 'Remover admin' : 'Tornar admin'}</button>`}</td>
+          : `<button class="btn btn--ghost btn--sm" data-act="role" data-user="${esc(s.id)}" data-role="${s.role === 'admin' ? 'student' : 'admin'}" data-name="${esc(s.name)}">${s.role === 'admin' ? 'Remover admin' : 'Tornar admin'}</button>`}</td>
       </tr>`).join('');
 
     return `
@@ -2012,6 +2000,11 @@
           ${adminField('Duração (min)', `<input type="number" min="1" data-bind="${path}.minutes" data-kind="number" value="${esc(lesson.minutes)}">`)}
           ${adminField('Vídeo', `<input type="text" data-bind="${path}" data-kind="video" value="${esc(videoValue)}" placeholder="Link do YouTube ou URL de um .mp4">`, 'Aceita link do YouTube ou URL direta de vídeo (MP4). Vazio = aula em texto.')}
         </div>
+        ${Backend.canUpload ? `
+        <div class="adm-uploads">
+          <button type="button" class="btn btn--ghost btn--sm" data-act="upload-video" data-path="${path}">${icon('upload', 14)}<span>Enviar vídeo (MP4)</span></button>
+          <button type="button" class="btn btn--ghost btn--sm" data-act="upload-material" data-path="${path}">${icon('upload', 14)}<span>Enviar PDF ou imagem</span></button>
+        </div>` : ''}
         ${adminField('O que você vai aprender', `<textarea rows="4" data-bind="${path}.learn" data-kind="lines">${esc((lesson.learn || []).join('\n'))}</textarea>`, 'Um item por linha.')}
         ${adminField('Resumo da aula', `<textarea rows="6" data-bind="${path}.summary">${esc(lesson.summary || '')}</textarea>`, 'Deixe uma linha em branco entre parágrafos.')}
         ${adminField('Material complementar', `<textarea rows="4" data-bind="${path}.materials" data-kind="materials" placeholder="pdf | Apostila da aula | https://...">${esc(materialsToText(lesson.materials))}</textarea>`, 'Um por linha: <code>tipo | título | link, texto ou termo</code>. Tipos: pdf, link, texto, infografico, glossario.')}
@@ -2135,13 +2128,13 @@
       </div>
       <div class="adm-panel">
         <h2 class="adm-panel__title">Importar conteúdo</h2>
-        <p class="muted">Substitui o conteúdo deste navegador por um arquivo JSON exportado anteriormente.</p>
+        <p class="muted">${Backend.isCloud ? 'Substitui o conteúdo publicado para todos os alunos' : 'Substitui o conteúdo deste navegador'} por um arquivo JSON exportado anteriormente.</p>
         <input type="file" id="adminImportFile" accept="application/json,.json" hidden>
         <button class="btn btn--ghost btn--sm" data-act="import">${icon('upload', 14)}<span>Importar JSON</span></button>
       </div>
       <div class="adm-panel">
         <h2 class="adm-panel__title">Restaurar padrão</h2>
-        <p class="muted">Descarta as edições salvas neste navegador e volta ao conteúdo original do <code>courses.js</code>. O progresso dos alunos é mantido.</p>
+        <p class="muted">Descarta as edições ${Backend.isCloud ? 'publicadas' : 'salvas neste navegador'} e volta ao conteúdo original do <code>courses.js</code>. O progresso dos alunos é mantido.</p>
         <button class="btn btn--ghost btn--sm is-danger" data-act="restore">${icon('refresh', 14)}<span>Restaurar conteúdo padrão</span></button>
       </div>`;
   }
@@ -2207,14 +2200,15 @@
     return errors;
   }
 
-  function commitContent(next) {
+  async function commitContent(next) {
     const snapshot = clone(next);
-    if (!writeJSON(CONTENT_KEY, snapshot)) {
-      showToast('Não foi possível salvar: armazenamento do navegador cheio.', 'error');
+    try {
+      await Backend.saveContent(snapshot);
+    } catch (e) {
+      showToast(e.message, 'error');
       return false;
     }
-    CONTENT = snapshot;
-    buildIndex();
+    setContent(snapshot);
     adminDraft = clone(CONTENT);
     adminDirty = false;
     return true;
@@ -2224,7 +2218,31 @@
     return { id: uid('l-'), title: 'Nova aula', minutes: 5, videoId: null, videoUrl: null, learn: [], summary: '', materials: [] };
   }
 
-  function onAdminClick(e) {
+  // Opens the file picker and sends the file to Supabase Storage.
+  function pickAndUpload(accept, folder, onDone) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = accept;
+    input.addEventListener('change', async () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      showToast(`Enviando ${file.name}…`, 'default');
+      try {
+        const url = await Backend.uploadMedia(file, folder);
+        onDone(url, file);
+        markAdminDirty();
+        const y = window.scrollY;
+        renderAdmin();
+        window.scrollTo({ top: y });
+        showToast('Arquivo enviado. Publique as alterações para liberar aos alunos.', 'success');
+      } catch (e) {
+        showToast(e.message, 'error');
+      }
+    });
+    input.click();
+  }
+
+  async function onAdminClick(e) {
     const btn = e.target.closest('[data-act]');
     if (!btn || btn.disabled) return;
     const act = btn.dataset.act;
@@ -2295,13 +2313,29 @@
       case 'open-quiz':
         adminOpen.quiz = adminOpen.quiz === btn.dataset.id ? null : btn.dataset.id;
         break;
+      case 'upload-video': {
+        const lesson = getPath(adminDraft, path);
+        pickAndUpload('video/mp4,video/webm', 'videos', (url) => { lesson.videoId = null; lesson.videoUrl = url; });
+        return;
+      }
+      case 'upload-material': {
+        const lesson = getPath(adminDraft, path);
+        pickAndUpload('application/pdf,image/png,image/jpeg,image/webp', 'materiais', (url, file) => {
+          const title = file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ');
+          lesson.materials = lesson.materials || [];
+          lesson.materials.push({ type: file.type === 'application/pdf' ? 'pdf' : 'infografico', title, url });
+        });
+        return;
+      }
       case 'save': {
         const errors = validateContent(adminDraft);
         if (errors.length) {
           showToast(errors[0] + (errors.length > 1 ? ` (+${errors.length - 1})` : ''), 'error');
           return;
         }
-        if (commitContent(adminDraft)) showToast('Conteúdo salvo.', 'success');
+        btn.disabled = true;
+        if (await commitContent(adminDraft)) showToast(Backend.isCloud ? 'Conteúdo publicado para todos os alunos.' : 'Conteúdo salvo.', 'success');
+        btn.disabled = false;
         break;
       }
       case 'discard':
@@ -2325,20 +2359,28 @@
         rerender = false;
         break;
       case 'restore':
-        if (!window.confirm('Voltar ao conteúdo padrão? As edições salvas neste navegador serão descartadas.')) return;
-        localStorage.removeItem(CONTENT_KEY);
-        loadContent();
-        adminDraft = clone(CONTENT);
-        adminDirty = false;
-        showToast('Conteúdo padrão restaurado.', 'success');
+        if (!window.confirm(Backend.isCloud
+          ? 'Voltar ao conteúdo padrão? As edições publicadas serão substituídas para todos os alunos.'
+          : 'Voltar ao conteúdo padrão? As edições salvas neste navegador serão descartadas.')) return;
+        try {
+          await Backend.resetContent(clone(window.RAISIN_CONTENT));
+          await loadContent();
+          adminDraft = clone(CONTENT);
+          adminDirty = false;
+          showToast('Conteúdo padrão restaurado.', 'success');
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
         break;
       case 'role': {
-        const users = getUsers();
-        const u = users[btn.dataset.email];
-        if (!u) return;
-        u.role = u.role === 'admin' ? 'student' : 'admin';
-        saveUsers(users);
-        showToast(`${u.name} agora é ${u.role === 'admin' ? 'administrador' : 'aluno'}.`, 'success');
+        const role = btn.dataset.role;
+        btn.disabled = true;
+        try {
+          await Backend.setRole(btn.dataset.user, role);
+          showToast(`${btn.dataset.name} agora é ${role === 'admin' ? 'administrador' : 'aluno'}.`, 'success');
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
         break;
       }
       default:
@@ -2355,7 +2397,7 @@
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       let data;
       try { data = JSON.parse(reader.result); } catch (err) { showToast('Arquivo inválido: não é um JSON.', 'error'); return; }
       if (!data || !Array.isArray(data.courses) || !data.courses.every((c) => c && Array.isArray(c.modules) && c.modules.every((m) => m && Array.isArray(m.lessons)))) {
@@ -2366,7 +2408,7 @@
       data.trail = data.trail || [];
       const errors = validateContent(data);
       if (errors.length) { showToast('Arquivo com problemas: ' + errors[0], 'error'); return; }
-      if (commitContent(data)) {
+      if (await commitContent(data)) {
         showToast('Conteúdo importado.', 'success');
         renderAdmin();
       }
@@ -2389,7 +2431,7 @@
   }
 
   /* ------------------------------------------------------------------ *
-   * 23. PROFILE (view/edit account, logout)
+   * 23. PROFILE (view/edit account, logout, delete account)
    * ------------------------------------------------------------------ */
   function initProfileModal() {
     $('#profileToggle').addEventListener('click', openProfileModal);
@@ -2399,14 +2441,18 @@
     });
     $('#profileForm').addEventListener('submit', onProfileSave);
     $('#logoutBtn').addEventListener('click', () => { closeProfileModal(); logout(); });
+    $('#deleteAccountBtn').addEventListener('click', onDeleteAccount);
   }
 
   function openProfileModal() {
     if (!AppState) return;
-    $('#profileName').value = AppState.userName;
-    $('#profileEmail').value = AppState.email;
+    $('#profileName').value = currentUser.name;
+    $('#profileEmail').value = currentUser.email;
     $('#profileNewPassword').value = '';
     $('#profileLevel').innerHTML = levelBadgeHTML();
+    $('#profileStorageNote').textContent = Backend.isCloud
+      ? 'Seus dados ficam salvos na sua conta e acompanham você em qualquer aparelho.'
+      : 'Modo demonstração: seus dados ficam salvos só neste navegador.';
     ['profileName', 'profileEmail', 'profileNewPassword'].forEach(clearFieldError);
     $('#profileModalOverlay').hidden = false;
     $('#profileToggle').setAttribute('aria-expanded', 'true');
@@ -2420,92 +2466,115 @@
   async function onProfileSave(evt) {
     evt.preventDefault();
     ['profileName', 'profileEmail', 'profileNewPassword'].forEach(clearFieldError);
-
-    const name = $('#profileName').value.trim();
-    const newEmail = $('#profileEmail').value.trim().toLowerCase();
-    const newPassword = $('#profileNewPassword').value;
-    let valid = true;
-
-    if (!name) { setFieldError('profileName', 'Informe seu nome.'); valid = false; }
-    if (!newEmail || !/^\S+@\S+\.\S+$/.test(newEmail)) { setFieldError('profileEmail', 'Informe um e-mail válido.'); valid = false; }
-    if (newPassword && newPassword.length < 4) { setFieldError('profileNewPassword', 'A senha deve ter ao menos 4 caracteres.'); valid = false; }
-
-    const users = getUsers();
-    const oldEmail = AppState.email;
-    if (newEmail !== oldEmail && users[newEmail]) {
-      setFieldError('profileEmail', 'Este e-mail já está em uso.');
-      valid = false;
+    const changes = {
+      name: $('#profileName').value.trim(),
+      email: $('#profileEmail').value.trim().toLowerCase(),
+      password: $('#profileNewPassword').value
+    };
+    let result;
+    try {
+      result = await busy($('#profileSaveBtn'), () => Backend.updateAccount(currentUser, changes));
+    } catch (e) {
+      const field = /e-mail/i.test(e.message) ? 'profileEmail' : /senha/i.test(e.message) ? 'profileNewPassword' : 'profileName';
+      setFieldError(field, e.message);
+      return;
     }
-    if (!valid) return;
-
-    const btn = $('#profileSaveBtn');
-    btn.classList.add('is-loading'); btn.disabled = true;
-
-    const userRecord = users[oldEmail];
-    userRecord.name = name;
-    userRecord.email = newEmail;
-    if (newPassword) {
-      userRecord.salt = randomSalt();
-      userRecord.passwordHash = await hashPassword(newPassword, userRecord.salt);
-    }
-
-    if (newEmail !== oldEmail) {
-      delete users[oldEmail];
-      users[newEmail] = userRecord;
-      saveUsers(users);
-      AppState.email = newEmail;
-      saveStateForUser(newEmail, AppState);
-      localStorage.removeItem(STATE_PREFIX + oldEmail);
-      setSessionEmail(newEmail);
-    } else {
-      saveUsers(users);
-    }
-
-    AppState.userName = name;
+    currentUser = result.user;
+    AppState.userName = currentUser.name;
+    AppState.email = currentUser.email;
     save();
-
-    btn.classList.remove('is-loading'); btn.disabled = false;
     closeProfileModal();
     setGreeting();
     renderHome();
-    showToast('Dados atualizados com sucesso.', 'success');
+    showToast(result.emailChangePending
+      ? `Dados salvos. Confirme o novo e-mail pelo link enviado para ${changes.email}.`
+      : 'Dados atualizados com sucesso.', 'success');
+  }
+
+  async function onDeleteAccount() {
+    if (!window.confirm('Excluir sua conta? Seu progresso, gastos e certificados serão apagados para sempre.')) return;
+    try {
+      await busy($('#deleteAccountBtn'), () => Backend.deleteAccount(currentUser));
+    } catch (e) {
+      showToast(e.message, 'error');
+      return;
+    }
+    stopVideoTracking();
+    AppState = null;
+    currentUser = null;
+    closeProfileModal();
+    showAuthScreen();
+    showToast('Sua conta foi excluída.', 'default');
   }
 
   /* ------------------------------------------------------------------ *
    * 24. INIT
    * ------------------------------------------------------------------ */
-  function boot() {
+  let lastSaveErrorAt = 0;
+
+  async function boot() {
     const hash = window.location.hash;
     if (hash.startsWith('#verificar/')) {
       showVerifyScreen(hash.slice('#verificar/'.length));
       return;
     }
-
-    const sessionEmail = getSessionEmail();
-    const user = sessionEmail ? getUsers()[sessionEmail] : null;
-    const state = sessionEmail ? loadStateForUser(sessionEmail) : null;
-
-    if (sessionEmail && user && state) {
-      AppState = state;
-      study();
-      ensureAdminExists(sessionEmail);
-      showAppShell();
-      restoreSession();
-    } else {
-      setSessionEmail(null);
-      showAuthScreen();
+    // A reset-password link signs the user in; show the new-password form
+    // (initAuth wired it) instead of jumping into the app.
+    if (Backend.inRecovery) {
+      $('#appShell').hidden = true;
+      $('#authScreen').hidden = false;
+      showAuthView('recovery');
+      return;
     }
+    let user = null;
+    try { user = await Backend.currentUser(); } catch (e) { showToast(e.message, 'error'); }
+    if (!user) { showAuthScreen(); return; }
+    currentUser = user;
+    try {
+      AppState = await Backend.loadState(user);
+    } catch (e) {
+      showToast(e.message, 'error');
+      showAuthScreen();
+      return;
+    }
+    study();
+    await seedContentIfEmpty();
+    showAppShell();
+    restoreSession();
+    if (Backend.promotedToAdmin) showToast('Você é o administrador deste navegador.', 'default');
   }
 
-  function init() {
-    loadContent();
+  async function init() {
+    document.body.classList.add('is-booting');
+    try {
+      await Backend.init();
+    } catch (e) {
+      initAuth();
+      showAuthScreen();
+      showToast(e.message, 'error');
+      document.body.classList.remove('is-booting');
+      return;
+    }
+    Backend.onSaveError = (message) => {
+      if (Date.now() - lastSaveErrorAt < 15000) return; // one warning, not a toast storm
+      lastSaveErrorAt = Date.now();
+      showToast(message, 'error');
+    };
+    // Don't lose the last few seconds of progress when the tab goes away.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') Backend.flush().catch(() => {});
+    });
+    window.addEventListener('pagehide', () => { Backend.flush().catch(() => {}); });
+
+    await loadContent();
     initAuth();
     initNav();
     initExpenseForm();
     initCertModal();
     initProfileModal();
     initAdmin();
-    boot();
+    await boot();
+    document.body.classList.remove('is-booting');
   }
 
   document.addEventListener('DOMContentLoaded', init);
