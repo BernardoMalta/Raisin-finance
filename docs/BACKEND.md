@@ -62,8 +62,10 @@ Sem CLI também dá: cole o conteúdo de `supabase/migrations/20260929000000_ini
 ### 3. Endereços de retorno dos e-mails
 
 Em **Authentication → URL Configuration**:
-- **Site URL:** `https://bernardomalta.github.io/Raisin-finance/`
+- **Site URL:** `https://vihni7.github.io/Raisin-finance/`
 - **Redirect URLs:** a mesma, mais `http://localhost:8000/` para testes locais.
+
+Isso já está no `supabase/config.toml` e pode ser aplicado com `npx supabase config push`.
 
 Sem isso, os links de confirmação e de "esqueci minha senha" apontam para o endereço errado.
 

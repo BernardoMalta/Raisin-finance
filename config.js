@@ -12,6 +12,6 @@
    no navegador de quem usa, como antes do backend existir.
    ========================================================================== */
 window.RAISIN_CONFIG = {
-  supabaseUrl: '',
-  supabaseAnonKey: ''
+  supabaseUrl: 'https://elomncqesupbdhnxbhxi.supabase.co',
+  supabaseAnonKey: 'sb_publishable_1d22pIx06hfqYl8a8F3VSQ_snNyIGox'
 };

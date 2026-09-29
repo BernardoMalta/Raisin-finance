@@ -7,7 +7,7 @@
 Registre seus gastos, acompanhe o orçamento e aprenda de verdade, com aulas em vídeo,
 questionários, trilha guiada e certificado, do primeiro orçamento aos primeiros investimentos.
 
-[**Abrir o site →**](https://bernardomalta.github.io/Raisin-finance/)
+[**Abrir o site →**](https://vihni7.github.io/Raisin-finance/)
 
 ![HTML](https://img.shields.io/badge/HTML5-0B2545?logo=html5&logoColor=white)
 ![CSS](https://img.shields.io/badge/CSS3-0B2545?logo=css3&logoColor=white)
@@ -86,7 +86,7 @@ Todo o conteúdo é educativo: a plataforma deixa claro que rentabilidade não �
 Não há build nem dependências. Só é preciso servir a pasta por HTTP, porque o player do YouTube não funciona abrindo o arquivo direto do disco:
 
 ```bash
-git clone https://github.com/BernardoMalta/Raisin-finance.git
+git clone https://github.com/Vihni7/Raisin-finance.git
 cd Raisin-finance
 python -m http.server 8000
 # abra http://localhost:8000
