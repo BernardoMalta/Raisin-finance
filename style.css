@@ -1606,7 +1606,7 @@ input[type="date"] { min-width: 0; max-width: 100%; display: block; }
 .certificate__qr { width: 76px; height: 76px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
 .certificate__qr img, .certificate__qr canvas { width: 76px !important; height: 76px !important; }
 .certificate__verify { display: block; flex: 1; margin: 0; padding: 0; border: 0; font-size: 11.5px; line-height: 1.5; color: var(--text-secondary); }
-.certificate__verify a { color: var(--navy-800); font-weight: 600; padding: 4px 0; display: inline-block; font-family: var(--font-ledger); font-size: 11px; word-break: break-all; }
+.certificate__verify a { color: var(--navy-800); font-weight: 600; padding: 8px 0; display: inline-block; font-family: var(--font-ledger); font-size: 11px; word-break: break-all; }
 .certificate__seal {
   width: 58px; height: 58px; flex-shrink: 0;
   margin: 0;
@@ -1648,4 +1648,115 @@ input[type="date"] { min-width: 0; max-width: 100%; display: block; }
   .certificate__frame { height: 100%; min-height: 0; box-sizing: border-box; padding: 12mm 16mm 8mm; }
   .certificate__name { font-size: 40px; }
   .certificate__course { font-size: 24px; }
+}
+
+/* ==========================================================================
+   CAIXINHA (bank balance, savings boxes, emergency reserve)
+   ========================================================================== */
+.stat-grid--3 .stat-card { min-width: 0; }
+.stat-grid--3 .stat-card--wide { grid-column: 1 / -1; }
+.stat-grid--3 .stat-card__value { overflow-wrap: anywhere; }
+
+.wallet-top { display: flex; flex-direction: column; gap: 16px; }
+.wallet-balance .budget-goal-row input { min-width: 0; }
+
+.wallet-reserve {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  box-shadow: var(--shadow-card);
+  min-width: 0;
+}
+.wallet-reserve__head { display: flex; align-items: center; gap: 12px; }
+.wallet-reserve__icon {
+  width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
+  background: var(--navy-100); color: var(--navy-800);
+  display: flex; align-items: center; justify-content: center;
+}
+.wallet-reserve__titles { min-width: 0; }
+.wallet-reserve__title { font-size: 17px; font-weight: 700; }
+.wallet-reserve__goal { font-size: 12.5px; color: var(--text-secondary); margin-top: 2px; }
+.wallet-reserve__amount { font-size: 28px; font-weight: 600; color: var(--navy-800); margin-top: 16px; line-height: 1.1; overflow-wrap: anywhere; }
+.wallet-reserve__coverage { font-size: 13.5px; line-height: 1.5; margin-top: 12px; }
+.wallet-reserve__coverage strong { font-weight: 600; color: var(--navy-800); }
+.wallet-reserve__suggest {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 8px 12px; margin-top: 12px; padding: 10px 12px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 12.5px; color: var(--text-secondary);
+}
+.wallet-reserve__suggest strong { color: var(--navy-800); font-weight: 600; }
+
+.wallet-boxes { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.wallet-box {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  box-shadow: var(--shadow-card);
+  min-width: 0;
+}
+.wallet-box__head { display: flex; align-items: center; gap: 10px; }
+.wallet-box__name { flex: 1; font-weight: 700; font-size: 14.5px; color: var(--navy-800); min-width: 0; overflow-wrap: anywhere; }
+.wallet-box__saved { font-size: 15px; font-weight: 600; color: var(--navy-800); flex-shrink: 0; }
+.wallet-box__meta { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+.wallet-box__actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+.wallet-box__actions .btn { gap: 6px; padding: 0 8px; min-width: 0; }
+.wallet-box__delete {
+  width: 36px; height: 36px; flex-shrink: 0; margin: -6px -6px -6px 0;
+  border: none; background: transparent; color: var(--text-secondary);
+  border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center;
+}
+.wallet-box__delete:hover { background: var(--accent-red-soft); color: var(--accent-red); }
+
+.wallet-inline { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+.wallet-inline--new {
+  margin-top: 0; padding: 14px;
+  background: var(--bg-raised); border: 1px solid var(--border); border-radius: var(--radius-md);
+}
+.wallet-inline__hint { font-size: 12px; color: var(--text-secondary); }
+.wallet-inline__actions { display: flex; gap: 8px; }
+.wallet-inline__actions .btn { flex: 1; }
+
+.wallet-new { margin-top: 10px; }
+.wallet-new .btn { gap: 6px; }
+.wallet-note { font-size: 13px; color: var(--text-secondary); }
+.wallet-move { animation: none; }
+.wallet-move .tx-item__desc,
+.wallet-move .tx-item__meta { white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }
+.wallet-move__amount.is-in { color: var(--accent-teal); }
+
+@media (max-width: 374px) {
+  .wallet-reserve, .wallet-box { padding: 12px; }
+  .wallet-reserve__amount { font-size: 24px; }
+  .wallet-box__actions { gap: 6px; }
+  .wallet-box__actions .btn { padding: 0 4px; }
+  .wallet-box__actions .btn svg { display: none; }
+}
+
+@media (min-width: 768px) {
+  .stat-grid--3 { grid-template-columns: repeat(3, 1fr); }
+  .stat-grid--3 .stat-card--wide { grid-column: auto; }
+  .quick-grid { grid-template-columns: repeat(2, 1fr); }
+  .wallet-boxes { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (min-width: 1024px) {
+  .quick-grid { grid-template-columns: repeat(4, 1fr); }
+  .wallet-top { display: grid; grid-template-columns: 1.4fr 1fr; align-items: start; gap: 16px; }
+  .wallet-reserve { padding: 22px; }
+  .wallet-reserve__amount { font-size: 32px; }
+  .wallet-boxes { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* Bottom nav holds up to six items (Admin only for admins): labels stay on
+   one line and shrink instead of pushing the bar past the screen. */
+.bottom-nav__item { min-width: 0; padding: 0 2px; }
+.bottom-nav__item span { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 374px) {
+  .bottom-nav__item { font-size: 10px; letter-spacing: -0.02em; }
+  /* Six items (admin): tighter labels so "Conquistas" still fits whole. */
+  .bottom-nav:has(.bottom-nav__item[data-tab="admin"]:not([hidden])) .bottom-nav__item { font-size: 9.5px; padding: 0; }
 }

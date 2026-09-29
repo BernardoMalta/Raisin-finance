@@ -53,7 +53,10 @@
       lastView: prefs.lastView || 'home',
       activeCourseId: prefs.activeCourseId || null,
       activeLessonId: prefs.activeLessonId || null,
-      activeModuleId: prefs.activeModuleId || null
+      activeModuleId: prefs.activeModuleId || null,
+      // Caixinha (bank balance + savings boxes). Cloud mode keeps it inside
+      // prefs so the user_state schema stays the same.
+      wallet: prefs.wallet && typeof prefs.wallet === 'object' && !Array.isArray(prefs.wallet) ? prefs.wallet : null
     };
   }
 
@@ -62,7 +65,8 @@
       lastView: state.lastView || 'home',
       activeCourseId: state.activeCourseId || null,
       activeLessonId: state.activeLessonId || null,
-      activeModuleId: state.activeModuleId || null
+      activeModuleId: state.activeModuleId || null,
+      wallet: state.wallet || null
     };
   }
 

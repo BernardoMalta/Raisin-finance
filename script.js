@@ -495,7 +495,7 @@
       openCourse(AppState.activeCourseId);
     } else if (view === 'quiz' && IDX.modules[AppState.activeModuleId]) {
       openCourse(IDX.modules[AppState.activeModuleId].course.id);
-    } else if (['home', 'learn', 'track', 'progress', 'library', 'admin'].includes(view)) {
+    } else if (['home', 'learn', 'track', 'wallet', 'progress', 'library', 'admin'].includes(view)) {
       goTo(view);
     } else {
       goTo('learn');
@@ -537,6 +537,7 @@
     if (tab === 'learn') renderStudies();
     if (tab === 'library') renderLibrary();
     if (tab === 'track') renderTrack();
+    if (tab === 'wallet') { walletForm = null; renderWallet(); }
     if (tab === 'progress') renderProgress();
     if (tab === 'admin') renderAdmin();
   }
@@ -1658,6 +1659,376 @@
   }
 
   /* ------------------------------------------------------------------ *
+   * 19b. CAIXINHA (bank balance + savings boxes + emergency reserve)
+   * ------------------------------------------------------------------ */
+  const RESERVE_ID = 'reserva';
+  const RESERVE_MONTHS = 6;
+  const MAX_MOVES = 200;
+  // Which inline form is open: { kind: 'guardar'|'resgatar'|'meta', boxId } or { kind: 'nova' }.
+  let walletForm = null;
+
+  function cents(n) { return Math.round((Number(n) || 0) * 100) / 100; }
+
+  function wallet() {
+    let w = AppState.wallet;
+    if (!w || typeof w !== 'object' || Array.isArray(w)) w = AppState.wallet = { balance: 0, boxes: [], moves: [] };
+    if (!Array.isArray(w.boxes)) w.boxes = [];
+    if (!Array.isArray(w.moves)) w.moves = [];
+    w.balance = cents(w.balance);
+    w.boxes.forEach((b) => { b.saved = cents(b.saved); b.goal = cents(b.goal); });
+    if (!w.boxes.some((b) => b.id === RESERVE_ID)) {
+      w.boxes.unshift({ id: RESERVE_ID, name: 'Reserva de emergência', saved: 0, goal: 0 });
+    }
+    return w;
+  }
+
+  function walletSaved(w) { return cents(w.boxes.reduce((s, b) => s + b.saved, 0)); }
+
+  // Average spent per month, over the months that have at least one expense.
+  function monthlyExpenseAverage() {
+    const byMonth = {};
+    AppState.expenses.forEach((e) => {
+      const key = String(e.date || '').slice(0, 7);
+      if (key) byMonth[key] = (byMonth[key] || 0) + (Number(e.amount) || 0);
+    });
+    const months = Object.keys(byMonth);
+    if (!months.length) return 0;
+    return months.reduce((s, k) => s + byMonth[k], 0) / months.length;
+  }
+
+  function formatMonths(n) {
+    const rounded = Math.floor(n * 10) / 10;
+    const label = rounded.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 1 });
+    return `${label} ${rounded === 1 ? 'mês' : 'meses'}`;
+  }
+
+  function progressLineHTML(saved, goal) {
+    if (!(goal > 0)) return '';
+    const pct = Math.min(100, (saved / goal) * 100);
+    return `
+      <div class="progress-line">
+        <div class="progress-line__track"><div class="progress-line__fill" style="width:${pct}%"></div></div>
+        <span class="progress-line__pct ledger">${Math.floor(pct)}%</span>
+      </div>`;
+  }
+
+  function walletFormHTML(box) {
+    if (!walletForm || walletForm.boxId !== box.id) return '';
+    const kind = walletForm.kind;
+    const isMeta = kind === 'meta';
+    const label = isMeta ? 'Meta (R$)' : kind === 'guardar' ? 'Quanto guardar (R$)' : 'Quanto resgatar (R$)';
+    const hint = isMeta
+      ? 'Deixe em branco ou 0 para ficar sem meta.'
+      : kind === 'guardar' ? `Disponível na conta: ${formatBRL(wallet().balance)}` : `Guardado nesta caixinha: ${formatBRL(box.saved)}`;
+    const value = isMeta && box.goal > 0 ? box.goal : '';
+    return `
+      <form class="wallet-inline" data-wallet-form="${kind}" data-box="${esc(box.id)}" novalidate>
+        <div class="field">
+          <label for="walletAmount">${label}</label>
+          <input type="number" id="walletAmount" inputmode="decimal" min="0" step="0.01" placeholder="0,00" value="${value}">
+          <span class="wallet-inline__hint">${hint}</span>
+          <span class="field__error" id="walletAmountError" role="alert"></span>
+        </div>
+        <div class="wallet-inline__actions">
+          <button type="submit" class="btn btn--primary btn--sm">${isMeta ? 'Salvar meta' : kind === 'guardar' ? 'Guardar' : 'Resgatar'}</button>
+          <button type="button" class="btn btn--ghost btn--sm" data-wallet-act="cancel">Cancelar</button>
+        </div>
+      </form>`;
+  }
+
+  function boxActionsHTML(box) {
+    const id = esc(box.id);
+    return `
+      <div class="wallet-box__actions">
+        <button type="button" class="btn btn--ghost btn--sm" data-wallet-act="guardar" data-box="${id}">${icon('arrowDown', 16)}Guardar</button>
+        <button type="button" class="btn btn--ghost btn--sm" data-wallet-act="resgatar" data-box="${id}">${icon('arrowUp', 16)}Resgatar</button>
+        <button type="button" class="btn btn--ghost btn--sm" data-wallet-act="meta" data-box="${id}">${icon('target', 16)}Meta</button>
+      </div>`;
+  }
+
+  function reserveCardHTML(box) {
+    const avg = monthlyExpenseAverage();
+    const suggested = cents(avg * RESERVE_MONTHS);
+    const coverage = avg > 0
+      ? `Cobre <strong class="ledger">${formatMonths(box.saved / avg)}</strong> de gastos, pela sua média de ${formatBRL(avg)} por mês.`
+      : 'Registre seus gastos na aba Gastos para calcular quantos meses a reserva cobre.';
+    const goalLine = box.goal > 0
+      ? `Meta de ${formatBRL(box.goal)}${box.saved >= box.goal ? ' · atingida' : ` · faltam ${formatBRL(box.goal - box.saved)}`}`
+      : 'Sem meta definida';
+    const suggest = avg > 0 && suggested !== box.goal
+      ? `<div class="wallet-reserve__suggest">
+          <span>Meta sugerida: ${RESERVE_MONTHS} meses de gastos, <strong class="ledger">${formatBRL(suggested)}</strong></span>
+          <button type="button" class="btn btn--ghost btn--sm" data-wallet-act="suggest">Usar meta sugerida</button>
+        </div>`
+      : '';
+    return `
+      <div class="wallet-reserve" data-box-card="${esc(box.id)}">
+        <div class="wallet-reserve__head">
+          <span class="wallet-reserve__icon" aria-hidden="true">${icon('shieldCheck', 20)}</span>
+          <div class="wallet-reserve__titles">
+            <h2 class="wallet-reserve__title">${esc(box.name)}</h2>
+            <p class="wallet-reserve__goal" id="walletReserveGoal">${goalLine}</p>
+          </div>
+        </div>
+        <p class="wallet-reserve__amount ledger" id="walletReserveAmount">${formatBRL(box.saved)}</p>
+        ${progressLineHTML(box.saved, box.goal)}
+        <p class="wallet-reserve__coverage" id="walletCoverage">${coverage}</p>
+        ${suggest}
+        ${boxActionsHTML(box)}
+        ${walletFormHTML(box)}
+      </div>`;
+  }
+
+  function boxCardHTML(box) {
+    return `
+      <li class="wallet-box" data-box-card="${esc(box.id)}">
+        <div class="wallet-box__head">
+          <span class="wallet-box__name">${esc(box.name)}</span>
+          <span class="wallet-box__saved ledger">${formatBRL(box.saved)}</span>
+          <button type="button" class="wallet-box__delete" data-wallet-act="delete" data-box="${esc(box.id)}" aria-label="Excluir caixinha ${esc(box.name)}">${icon('trash', 16)}</button>
+        </div>
+        <p class="wallet-box__meta">${box.goal > 0 ? `Meta de ${formatBRL(box.goal)}` : 'Sem meta'}</p>
+        ${progressLineHTML(box.saved, box.goal)}
+        ${boxActionsHTML(box)}
+        ${walletFormHTML(box)}
+      </li>`;
+  }
+
+  function newBoxFormHTML() {
+    if (!walletForm || walletForm.kind !== 'nova') {
+      return `<button type="button" class="btn btn--ghost btn--block" data-wallet-act="nova">${icon('plus', 18)}Nova caixinha</button>`;
+    }
+    return `
+      <form class="wallet-inline wallet-inline--new" data-wallet-form="nova" novalidate>
+        <div class="field">
+          <label for="walletNewName">Nome da caixinha</label>
+          <input type="text" id="walletNewName" maxlength="40" placeholder="Ex.: Viagem, notebook novo" autocomplete="off">
+          <span class="field__error" id="walletNewNameError" role="alert"></span>
+        </div>
+        <div class="field">
+          <label for="walletNewGoal">Meta (R$, opcional)</label>
+          <input type="number" id="walletNewGoal" inputmode="decimal" min="0" step="0.01" placeholder="0,00">
+          <span class="field__error" id="walletNewGoalError" role="alert"></span>
+        </div>
+        <div class="wallet-inline__actions">
+          <button type="submit" class="btn btn--primary btn--sm">Criar caixinha</button>
+          <button type="button" class="btn btn--ghost btn--sm" data-wallet-act="cancel">Cancelar</button>
+        </div>
+      </form>`;
+  }
+
+  function movesHTML(w) {
+    const moves = w.moves.slice(0, 20);
+    if (!moves.length) return '<p class="empty-state is-visible">Nenhuma movimentação ainda. Guarde um valor em uma caixinha para começar.</p>';
+    return `<ul class="tx-list" id="walletMoves">${moves.map((m) => {
+      const isIn = m.type === 'guardar';
+      return `
+        <li class="tx-item wallet-move">
+          <span class="tx-item__icon" aria-hidden="true">${icon(isIn ? 'arrowDown' : 'arrowUp', 18)}</span>
+          <span class="tx-item__body">
+            <span class="tx-item__desc">${esc(m.boxName)}</span>
+            <span class="tx-item__meta">${isIn ? 'Guardado' : 'Resgatado'} · ${formatDate(m.date)}</span>
+          </span>
+          <span class="tx-item__amount ledger wallet-move__amount ${isIn ? 'is-in' : 'is-out'}">${isIn ? '+' : '−'} ${formatBRL(m.amount)}</span>
+        </li>`;
+    }).join('')}</ul>`;
+  }
+
+  function renderWallet() {
+    const w = wallet();
+    const saved = walletSaved(w);
+    const reserve = w.boxes.find((b) => b.id === RESERVE_ID);
+    const others = w.boxes.filter((b) => b.id !== RESERVE_ID);
+
+    $('#walletBody').innerHTML = `
+      <div class="stat-grid stat-grid--3">
+        <div class="stat-card">
+          <p class="stat-card__label">Na conta</p>
+          <p class="stat-card__value ledger" id="walletBalance">${formatBRL(w.balance)}</p>
+          <p class="stat-card__foot">Livre para usar</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-card__label">Guardado nas caixinhas</p>
+          <p class="stat-card__value ledger" id="walletSaved">${formatBRL(saved)}</p>
+          <p class="stat-card__foot">${w.boxes.length} caixinha${w.boxes.length > 1 ? 's' : ''}</p>
+        </div>
+        <div class="stat-card stat-card--wide">
+          <p class="stat-card__label">Patrimônio</p>
+          <p class="stat-card__value ledger" id="walletTotal">${formatBRL(w.balance + saved)}</p>
+          <p class="stat-card__foot">Conta + caixinhas</p>
+        </div>
+      </div>
+
+      <div class="wallet-top section-block">
+        ${reserveCardHTML(reserve)}
+        <div class="budget-summary wallet-balance">
+          <div class="section-block__head"><h2>Saldo na conta</h2></div>
+          <p class="budget-summary__hint">Atualize com o valor que aparece no app do seu banco. Guardar e resgatar movem dinheiro entre a conta e as caixinhas.</p>
+          <div class="field budget-goal-field">
+            <label for="walletBalanceInput">Saldo atual (R$)</label>
+            <div class="budget-goal-row">
+              <input type="number" id="walletBalanceInput" inputmode="decimal" min="0" step="0.01" placeholder="Ex.: 1500" value="${w.balance}">
+              <button type="button" class="btn btn--ghost" data-wallet-act="balance">Salvar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-block">
+        <div class="section-block__head"><h2>Minhas caixinhas</h2></div>
+        ${others.length ? `<ul class="wallet-boxes" id="walletBoxes">${others.map(boxCardHTML).join('')}</ul>` : '<p class="wallet-note">Separe dinheiro por objetivo: viagem, curso, troca de celular.</p>'}
+        <div class="wallet-new">${newBoxFormHTML()}</div>
+      </div>
+
+      <div class="section-block">
+        <div class="section-block__head"><h2>Movimentações</h2></div>
+        ${movesHTML(w)}
+      </div>`;
+
+    const focusEl = walletForm && $(walletForm.kind === 'nova' ? '#walletNewName' : '#walletAmount');
+    if (focusEl) focusEl.focus({ preventScroll: true });
+  }
+
+  function walletFieldError(key, message) {
+    const err = $('#' + key + 'Error');
+    if (err) {
+      err.textContent = message;
+      err.closest('.field').classList.add('has-error');
+    }
+    showToast(message, 'error');
+  }
+
+  function parseAmount(raw) {
+    const n = parseFloat(String(raw).replace(',', '.'));
+    return isNaN(n) ? NaN : cents(n);
+  }
+
+  function addMove(w, box, amount, type) {
+    w.moves.unshift({ id: uid('m'), date: todayISO(), boxId: box.id, boxName: box.name, amount: cents(amount), type: type });
+    if (w.moves.length > MAX_MOVES) w.moves.length = MAX_MOVES;
+  }
+
+  function onWalletClick(e) {
+    const btn = e.target.closest('[data-wallet-act]');
+    if (!btn) return;
+    const act = btn.dataset.walletAct;
+    const w = wallet();
+    const box = w.boxes.find((b) => b.id === btn.dataset.box);
+
+    if (act === 'balance') {
+      const raw = $('#walletBalanceInput').value;
+      const val = parseAmount(raw);
+      if (raw === '' || isNaN(val) || val < 0) { showToast('Informe um saldo válido (zero ou mais).', 'error'); return; }
+      w.balance = val;
+      save();
+      renderWallet();
+      showToast('Saldo da conta atualizado.', 'success');
+    } else if (act === 'cancel') {
+      walletForm = null;
+      renderWallet();
+    } else if (act === 'nova') {
+      walletForm = { kind: 'nova' };
+      renderWallet();
+    } else if ((act === 'guardar' || act === 'resgatar' || act === 'meta') && box) {
+      // Clicking the same action again closes the form.
+      walletForm = walletForm && walletForm.kind === act && walletForm.boxId === box.id ? null : { kind: act, boxId: box.id };
+      renderWallet();
+    } else if (act === 'suggest') {
+      const reserve = w.boxes.find((b) => b.id === RESERVE_ID);
+      const suggested = cents(monthlyExpenseAverage() * RESERVE_MONTHS);
+      if (!(suggested > 0)) return;
+      reserve.goal = suggested;
+      save();
+      renderWallet();
+      showToast(`Meta da reserva definida em ${formatBRL(suggested)}.`, 'success');
+    } else if (act === 'delete' && box && box.id !== RESERVE_ID) {
+      const msg = box.saved > 0
+        ? `Excluir a caixinha "${box.name}"? ${formatBRL(box.saved)} volta para a conta.`
+        : `Excluir a caixinha "${box.name}"?`;
+      if (!window.confirm(msg)) return;
+      if (box.saved > 0) {
+        w.balance = cents(w.balance + box.saved);
+        addMove(w, box, box.saved, 'resgatar');
+      }
+      w.boxes = w.boxes.filter((b) => b.id !== box.id);
+      if (walletForm && walletForm.boxId === box.id) walletForm = null;
+      save();
+      renderWallet();
+      showToast('Caixinha excluída.', 'default');
+    }
+  }
+
+  function onWalletSubmit(e) {
+    const form = e.target.closest('[data-wallet-form]');
+    if (!form) return;
+    e.preventDefault();
+    const w = wallet();
+    const kind = form.dataset.walletForm;
+
+    if (kind === 'nova') {
+      const name = $('#walletNewName').value.trim();
+      const goalRaw = $('#walletNewGoal').value;
+      const goal = goalRaw === '' ? 0 : parseAmount(goalRaw);
+      if (!name) { walletFieldError('walletNewName', 'Dê um nome para a caixinha.'); return; }
+      if (w.boxes.some((b) => normalize(b.name) === normalize(name))) { walletFieldError('walletNewName', 'Já existe uma caixinha com esse nome.'); return; }
+      if (isNaN(goal) || goal < 0) { walletFieldError('walletNewGoal', 'Informe uma meta válida ou deixe em branco.'); return; }
+      w.boxes.push({ id: uid('b'), name: name, saved: 0, goal: goal });
+      walletForm = null;
+      save();
+      renderWallet();
+      showToast(`Caixinha "${name}" criada.`, 'success');
+      return;
+    }
+
+    const box = w.boxes.find((b) => b.id === form.dataset.box);
+    if (!box) return;
+    const raw = $('#walletAmount').value;
+    const amount = parseAmount(raw);
+
+    if (kind === 'meta') {
+      const goal = raw === '' ? 0 : amount;
+      if (isNaN(goal) || goal < 0) { walletFieldError('walletAmount', 'Informe uma meta válida.'); return; }
+      box.goal = goal;
+      walletForm = null;
+      save();
+      renderWallet();
+      showToast(goal > 0 ? 'Meta atualizada.' : 'Meta removida.', 'success');
+      return;
+    }
+
+    if (raw === '' || isNaN(amount) || amount <= 0) { walletFieldError('walletAmount', 'Informe um valor maior que zero.'); return; }
+    if (kind === 'guardar') {
+      if (amount > w.balance) { walletFieldError('walletAmount', `Saldo insuficiente na conta. Disponível: ${formatBRL(w.balance)}.`); return; }
+      w.balance = cents(w.balance - amount);
+      box.saved = cents(box.saved + amount);
+    } else {
+      if (amount > box.saved) { walletFieldError('walletAmount', `Valor maior que o guardado. Disponível: ${formatBRL(box.saved)}.`); return; }
+      box.saved = cents(box.saved - amount);
+      w.balance = cents(w.balance + amount);
+    }
+    addMove(w, box, amount, kind);
+    walletForm = null;
+    save();
+    renderWallet();
+    showToast(kind === 'guardar' ? `${formatBRL(amount)} guardado em ${box.name}.` : `${formatBRL(amount)} resgatado de ${box.name}.`, 'success');
+  }
+
+  function initWallet() {
+    const body = $('#walletBody');
+    body.addEventListener('click', onWalletClick);
+    body.addEventListener('submit', onWalletSubmit);
+    body.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && e.target.id === 'walletBalanceInput') {
+        e.preventDefault();
+        $('[data-wallet-act="balance"]', body).click();
+      } else if (e.key === 'Escape' && walletForm) {
+        walletForm = null;
+        renderWallet();
+      }
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
    * 20. CONQUISTAS (progress, XP, certificates, quiz results)
    * ------------------------------------------------------------------ */
   function renderProgress() {
@@ -2601,6 +2972,7 @@
     initAuth();
     initNav();
     initExpenseForm();
+    initWallet();
     initCertModal();
     initProfileModal();
     initAdmin();
