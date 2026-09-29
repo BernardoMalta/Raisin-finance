@@ -853,8 +853,19 @@
       ? `${monthExpenses.length} lançamento${monthExpenses.length > 1 ? 's' : ''} este mês`
       : 'Nenhum lançamento ainda';
 
-    $('#statSavings').textContent = formatBRL(AppState.savingsGoal);
-    $('#statSavingsBar').style.width = '62%';
+    // Budget card: what is still available of the monthly limit set in Gastos.
+    const limit = Number(AppState.budgetGoal) || 0;
+    const usedPct = limit > 0 ? (total / limit) * 100 : 0;
+    const bar = $('#statBudgetBar');
+    $('#statBudget').textContent = formatBRL(Math.max(0, limit - total));
+    bar.style.width = Math.min(100, usedPct) + '%';
+    bar.classList.toggle('is-warning', usedPct > 60 && usedPct <= 90);
+    bar.classList.toggle('is-over', usedPct > 90);
+    $('#statBudgetFoot').textContent = !limit
+      ? 'Defina um limite em Gastos'
+      : total > limit
+        ? `Limite estourado em ${formatBRL(total - limit)}`
+        : `${Math.round(usedPct)}% do limite de ${formatBRL(limit)} usado`;
 
     const doneCourses = CONTENT.courses.filter(isCourseComplete).length;
     $('#statCourses').textContent = `${doneCourses} / ${CONTENT.courses.length}`;
@@ -1778,19 +1789,21 @@
 
     $('#certUserName').textContent = cert.studentName;
     $('#certCourseName').textContent = cert.courseTitle;
-    $('#certHours').textContent = `com carga horária de ${hoursLabel(cert.hours)}`;
-    $('#certDate').textContent = `Concluído em ${formatDate(cert.completedOn)}`;
+    $('#certHours').textContent = hoursLabel(cert.hours);
+    $('#certDate').textContent = formatDate(cert.completedOn);
     $('#certCode').textContent = cert.code;
     $('#certModalOverlay').hidden = false;
 
     const url = Backend.verifyUrl(cert, course.id);
     $('#certVerifyLink').href = url;
+    // Short, readable address on paper; the QR and the link carry the full URL.
+    $('#certVerifyLink').textContent = url.split('#')[0].replace(/^https?:\/\//, '') + '#verificar/' + cert.code;
     const qrBox = $('#certQr');
     qrBox.innerHTML = '';
     try {
       await loadScript(QR_LIB);
       /* global QRCode */
-      new QRCode(qrBox, { text: url, width: 88, height: 88, colorDark: '#0B2545', colorLight: '#FFFFFF', correctLevel: QRCode.CorrectLevel.M });
+      new QRCode(qrBox, { text: url, width: 152, height: 152, colorDark: '#0B2545', colorLight: '#FFFFFF', correctLevel: QRCode.CorrectLevel.M });
       qrBox.title = 'Escaneie para verificar';
     } catch (e) {
       qrBox.innerHTML = '<span class="muted">QR indisponível offline</span>';
@@ -2511,6 +2524,21 @@
    * 24. INIT
    * ------------------------------------------------------------------ */
   let lastSaveErrorAt = 0;
+  let lastRefreshAt = 0;
+
+  async function refreshFromCloud() {
+    if (!AppState || !Backend.isCloud || Date.now() - lastRefreshAt < 5000) return;
+    lastRefreshAt = Date.now();
+    let changed = false;
+    try { changed = await Backend.refreshState(AppState); } catch (e) { return; }
+    if (!changed) return;
+    // Re-render the screen in place; lesson and quiz screens keep running.
+    if (currentView === 'home') renderHome();
+    else if (currentView === 'learn') renderStudies();
+    else if (currentView === 'progress') renderProgress();
+    else if (currentView === 'course' && IDX.courses[AppState.activeCourseId]) renderCourse(IDX.courses[AppState.activeCourseId]);
+    showToast('Progresso atualizado com o que você fez em outro aparelho.', 'default');
+  }
 
   async function boot() {
     const hash = window.location.hash;
@@ -2560,10 +2588,13 @@
       lastSaveErrorAt = Date.now();
       showToast(message, 'error');
     };
-    // Don't lose the last few seconds of progress when the tab goes away.
+    // Don't lose the last few seconds of progress when the tab goes away, and
+    // pick up progress made on another device when it comes back.
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') Backend.flush().catch(() => {});
+      else refreshFromCloud();
     });
+    window.addEventListener('focus', refreshFromCloud);
     window.addEventListener('pagehide', () => { Backend.flush().catch(() => {}); });
 
     await loadContent();

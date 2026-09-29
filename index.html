@@ -174,11 +174,12 @@
         <p class="stat-card__value ledger" id="statSpent">R$ 0,00</p>
         <p class="stat-card__foot" id="statSpentFoot">Nenhum lançamento ainda</p>
       </div>
-      <div class="stat-card">
-        <p class="stat-card__label">Meta de economia</p>
-        <p class="stat-card__value ledger" id="statSavings">R$ 0,00</p>
-        <div class="mini-bar"><div class="mini-bar__fill" id="statSavingsBar" style="width:0%"></div></div>
-      </div>
+      <button type="button" class="stat-card stat-card--link" data-goto="track" aria-label="Disponível no mês: abrir Gastos">
+        <span class="stat-card__label">Disponível no mês</span>
+        <span class="stat-card__value ledger" id="statBudget">R$ 0,00</span>
+        <span class="mini-bar"><span class="mini-bar__fill" id="statBudgetBar" style="width:0%"></span></span>
+        <span class="stat-card__foot" id="statBudgetFoot">Defina um limite em Gastos</span>
+      </button>
       <div class="stat-card">
         <p class="stat-card__label">Cursos concluídos</p>
         <p class="stat-card__value ledger" id="statCourses">0 / 0</p>
@@ -371,27 +372,45 @@
     <button class="modal__close" id="certModalClose" aria-label="Fechar">
       <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5L15 15M15 5L5 15"/></svg>
     </button>
-    <div class="certificate" id="certificateArt">
-      <div class="certificate__seal" aria-hidden="true">
-        <svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="7" r="4.5"/><path d="M7 11L5.5 18L10 15.5L14.5 18L13 11"/></svg>
-      </div>
-      <p class="certificate__eyebrow">Raisin Finance</p>
-      <h2 class="certificate__title" id="certModalTitle">Certificado de Conclusão</h2>
-      <p class="certificate__body">Este certificado é concedido a</p>
-      <p class="certificate__name" id="certUserName">Você</p>
-      <p class="certificate__body">por concluir com êxito o curso</p>
-      <p class="certificate__course" id="certCourseName">—</p>
-      <p class="certificate__body" id="certHours">—</p>
-      <p class="certificate__date" id="certDate">—</p>
-      <div class="certificate__verify">
-        <div class="certificate__qr" id="certQr" aria-label="QR Code de verificação"></div>
-        <div class="certificate__code">
-          <span>Código de validação</span>
-          <strong class="ledger" id="certCode">—</strong>
-          <a href="#" id="certVerifyLink" target="_blank" rel="noopener">Verificar autenticidade</a>
+    <article class="certificate" id="certificateArt">
+      <div class="certificate__frame">
+        <header class="certificate__head">
+          <span class="certificate__brand">
+            <svg width="22" height="22" viewBox="0 0 26 26" fill="none" aria-hidden="true">
+              <circle cx="13" cy="13" r="12" stroke="currentColor" stroke-width="2"/>
+              <path d="M8 15L11 10L14.5 13.5L18 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="certificate__brandname">Raisin<span>Finance</span></span>
+          </span>
+          <span class="certificate__school">Escola financeira</span>
+        </header>
+
+        <div class="certificate__main">
+          <h2 class="certificate__title" id="certModalTitle">Certificado de conclusão</h2>
+          <p class="certificate__lead">Certificamos que</p>
+          <p class="certificate__name" id="certUserName">—</p>
+          <p class="certificate__lead">concluiu com aproveitamento o curso</p>
+          <p class="certificate__course" id="certCourseName">—</p>
         </div>
+
+        <dl class="certificate__facts">
+          <div><dt>Carga horária</dt><dd class="ledger" id="certHours">—</dd></div>
+          <div><dt>Concluído em</dt><dd class="ledger" id="certDate">—</dd></div>
+          <div><dt>Código de validação</dt><dd class="ledger" id="certCode">—</dd></div>
+        </dl>
+
+        <footer class="certificate__foot">
+          <div class="certificate__qr" id="certQr" aria-label="QR Code de verificação"></div>
+          <p class="certificate__verify">
+            Verifique a autenticidade escaneando o QR Code ou em
+            <a href="#" id="certVerifyLink" target="_blank" rel="noopener"></a>
+          </p>
+          <div class="certificate__seal" aria-hidden="true">
+            <svg width="26" height="26" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="7" r="4.5"/><path d="M7 11L5.5 18L10 15.5L14.5 18L13 11"/><path d="M8.2 7.1L9.5 8.4L11.9 5.9"/></svg>
+          </div>
+        </footer>
       </div>
-    </div>
+    </article>
     <button class="btn btn--primary btn--block" id="certPrintBtn">Baixar / Imprimir certificado</button>
   </div>
 </div>

@@ -66,6 +66,71 @@
     };
   }
 
+  // Progress only moves forward: combine two copies of `study` so a stale tab
+  // or another device can never erase lessons, XP, quiz scores or courses.
+  function mergeRanges(a, b) {
+    const all = [...(a || []), ...(b || [])].map((r) => [Number(r[0]), Number(r[1])]).sort((x, y) => x[0] - y[0]);
+    const out = [];
+    all.forEach((r) => {
+      const last = out[out.length - 1];
+      if (last && r[0] <= last[1] + 0.75) last[1] = Math.max(last[1], r[1]);
+      else out.push(r);
+    });
+    return out;
+  }
+
+  function mergeStudy(local, remote) {
+    const a = local || defaultStudy();
+    const b = remote || {};
+    const merged = Object.assign(defaultStudy(), a);
+
+    merged.lessons = Object.assign({}, b.lessons || {}, a.lessons || {});
+    Object.keys(b.lessons || {}).forEach((id) => {
+      const x = (a.lessons || {})[id];
+      const y = b.lessons[id];
+      if (!x) return;
+      const completed = !!(x.completed || y.completed);
+      const dates = [x.completed && x.completedDate, y.completed && y.completedDate].filter(Boolean).sort();
+      merged.lessons[id] = {
+        ranges: mergeRanges(x.ranges, y.ranges),
+        duration: Math.max(Number(x.duration) || 0, Number(y.duration) || 0),
+        lastTime: Math.max(Number(x.lastTime) || 0, Number(y.lastTime) || 0),
+        completed,
+        completedDate: completed ? dates[0] : undefined
+      };
+    });
+
+    merged.xp = Object.assign({}, b.xp || {}, a.xp || {});
+
+    merged.quizzes = Object.assign({}, b.quizzes || {}, a.quizzes || {});
+    Object.keys(b.quizzes || {}).forEach((id) => {
+      const x = (a.quizzes || {})[id];
+      const y = b.quizzes[id];
+      if (!x) return;
+      merged.quizzes[id] = Object.assign({}, y, x, {
+        best: Math.max(Number(x.best) || 0, Number(y.best) || 0),
+        attempts: Math.max(Number(x.attempts) || 0, Number(y.attempts) || 0)
+      });
+    });
+
+    merged.courses = Object.assign({}, b.courses || {}, a.courses || {});
+    Object.keys(b.courses || {}).forEach((id) => {
+      const x = (a.courses || {})[id];
+      const y = b.courses[id];
+      if (x && !x.cert && y.cert) merged.courses[id] = Object.assign({}, x, { cert: y.cert });
+    });
+
+    merged.last = a.last || b.last || null;
+    return merged;
+  }
+
+  // Replace the contents of `target` in place, so references held by the app
+  // (AppState.study) see the merged data.
+  function adoptStudy(target, merged) {
+    Object.keys(target).forEach((k) => { delete target[k]; });
+    Object.assign(target, merged);
+  }
+
   async function sha256Hex(str) {
     if (window.crypto && window.crypto.subtle) {
       const digest = await window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
@@ -236,6 +301,8 @@
 
       async flush() {},
 
+      async refreshState() { return false; },
+
       async loadContent() {
         const saved = read(CONTENT_KEY, null);
         return saved && Array.isArray(saved.courses) ? saved : null;
@@ -350,7 +417,13 @@
       throw fail(serverMsg || translate(error));
     }
 
+    // Merge with what is in the cloud before writing, so saving from an old
+    // tab or a second device adds progress instead of overwriting it.
     async function writeState(state) {
+      const { data: remote, error: readError } = await sb.from('user_state')
+        .select('study').eq('user_id', session.user.id).maybeSingle();
+      if (readError) throw readError;
+      if (remote && remote.study) adoptStudy(state.study, mergeStudy(state.study, remote.study));
       const { error } = await sb.from('user_state').update({
         study: state.study,
         expenses: state.expenses,
@@ -497,6 +570,17 @@
         saveTimer = setTimeout(() => { this.flush().catch(() => {}); }, SAVE_DEBOUNCE_MS);
       },
 
+      // Pull progress made elsewhere (another device, an admin) into the open
+      // tab. Returns true when something new arrived.
+      async refreshState(state) {
+        if (!session || !state) return false;
+        const { data, error } = await sb.from('user_state').select('study').eq('user_id', session.user.id).maybeSingle();
+        if (error || !data || !data.study) return false;
+        const before = JSON.stringify(state.study);
+        adoptStudy(state.study, mergeStudy(state.study, data.study));
+        return JSON.stringify(state.study) !== before;
+      },
+
       async flush() {
         clearTimeout(saveTimer);
         const state = pendingState;
@@ -566,4 +650,5 @@
   }
 
   window.Backend = useCloud ? createCloudBackend() : createLocalBackend();
+  window.Backend.mergeStudy = mergeStudy;
 })();
