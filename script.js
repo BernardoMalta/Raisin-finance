@@ -775,17 +775,14 @@
       if (Tracker.token !== token || !document.getElementById('ytLessonPlayer')) return; // navigated away
       const playerVars = { rel: 0, playsinline: 1, modestbranding: 1 };
       if (/^https?:$/.test(window.location.protocol)) playerVars.origin = window.location.origin;
+      // Resume point is passed as `start` so the video is only cued there.
+      // (seekTo() on an unstarted player starts playback with sound.)
+      if (ls.lastTime > 3 && !ls.completed) playerVars.start = Math.floor(ls.lastTime);
       const player = new YT.Player('ytLessonPlayer', {
         width: '100%',
         height: '100%',
         videoId: lesson.videoId,
-        playerVars,
-        events: {
-          onReady: (e) => {
-            const d = e.target.getDuration();
-            if (ls.lastTime > 3 && !ls.completed && (!d || ls.lastTime < d - 5)) e.target.seekTo(ls.lastTime, true);
-          }
-        }
+        playerVars
       });
       Tracker.api = {
         time: () => (player.getCurrentTime ? player.getCurrentTime() : 0),
